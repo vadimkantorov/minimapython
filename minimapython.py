@@ -2002,9 +2002,9 @@ snippets_default = dict(
     footer_html = footer_html,
 )
 
-def render_page(content, layout, ctx, snippets = {}, num_snippets_renders = 5):
-    #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
-    
+def render_page(page, ctx, num_snippets_renders = 5):
+    snippets = ctx['snippets']
+
     ctx = ctx.copy() | snippets
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = page.get('url', ''), page__title = page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
@@ -2018,11 +2018,11 @@ def render_page(content, layout, ctx, snippets = {}, num_snippets_renders = 5):
         ctx['paginator__next_page'] = None
     if page_author := ctx.get('page', {}).get('author', ''):
         ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
-    
-    res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets[layout + '_html']))
+
+    res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets[page['layout'] + '_html']))
     for k in range(num_snippets_renders):
         res = resolve_template_variables(res, ctx)
-    res = resolve_template_variables(res, dict(content = content))
+    res = resolve_template_variables(res, dict(content = page['renderer'](page['content'], ctx)))
     res = resolve_template_variables(res, ctx)
     
     return res
@@ -2053,40 +2053,6 @@ def resolve_template_variables(res, ctx, sep = '__'):
             res = res.replace('{{ ' + k + ' }}', v)
     
     return res
-
-def render(input_path, output_path, context_path, sitemap_path, layout, snippets_dir, snippets_default = snippets_default):
-    assert output_path
-    
-    content = ''
-    if input_path and os.path.exists(input_path):
-        with open(input_path) as fp:
-            content = fp.read()
-    
-    ctx = {}
-    if context_path and os.path.exists(context_path):
-        with open(context_path) as fp:
-            ctx = json.load(fp)
-    
-    sitemap = sitemap_read(sitemap_path)
-
-    snippets = snippets_default | snippets_read(snippets_dir)
-
-    rendered = render_page(content, layout = layout, ctx = ctx, snippets = snippets)
-    url = output_path
-
-    id = hash(output_path)
-    abs_url = absolute_url(url, ctx)
-    rel_url = relative_url(url, ctx)
-
-    if sitemap_path:
-        sitemap = sitemap_update(sitemap, id = id, loc = abs_url, locrel = rel_url)
-        print(sitemap_write(sitemap_path, sitemap))
-
-    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
-    with open(output_path, 'w') as fp:
-        fp.write(rendered)
-    
-    print(output_path)
 
 def snippets_write(snippets_dir, snippets):
     os.makedirs(snippets_dir, exist_ok = True)
@@ -2158,15 +2124,11 @@ def relative_url(v, ctx):
         return os.path.join('/' + base_url.strip('/'), v)
     return v
 
-def removeATSIGN(v, ctx):
-    return v.replace('@', '')
-
-def date_to_xmlschema(v, ctx):
+def date_to_xmlschema(v, ctx, strftime = '', strptime = ''):
     return v
 
-def date_format(v, ctx, fmt = "%b %-d, %Y"):
-    fmt = ctx.get('site', {}).get('minima', {}.get('date_format', fmt)
-    
+def date_format(v, ctx, strftime = "%b %-d, %Y"):
+    strftime = ctx.get('site', {}).get('minima', {}).get('date_format', strftime)
     return v
 
 def escape(v, ctx):
@@ -2175,14 +2137,72 @@ def escape(v, ctx):
 def jsonify(v, ctx):
     return json.dumps(v, ensure_ascii = False)
 
+def removeATSIGN(v, ctx):
+    return v.replace('@', '')
+
+def read_page(input_path, layout = ''):
+    content = ''
+    if input_path and os.path.exists(input_path):
+        with open(input_path) as fp:
+            content = fp.read()
+
+    renderer = render_markdown if input_path.endswith('.md') else render_plain
+    return dict(frontmatter = dict(), layout = layout, content = content, renderer = renderer)
+
+def render_markdown(content, ctx):
+    return content
+
+def render_plain(content, ctx):
+    return content
+
+def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, snippets_default = {}):
+    #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
+    ctx = {}
+    if context_path and os.path.exists(context_path):
+        with open(context_path) as fp:
+            ctx = json.load(fp)
+    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, content = '') | ctx
+    if baseurl:
+        ctx['baseurl'] = baseurl
+    if siteurl:
+        ctx['site']['url'] = siteurl
+    
+    ctx['sitemap'] = sitemap_read(sitemap_path)
+    ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
+    return ctx
+    
+
+def render(output_path, input_path = '', context_path = '', sitemap_path = '', snippets_dir = '', layout = '', baseurl = '', siteurl = '', snippets_default = snippets_default):
+    # https://jekyllrb.com/docs/configuration/options/
+    # https://jekyllrb.com/docs/variables/
+
+    assert output_path
+
+    ctx = build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, snippets_default)
+    page = read_page(input_path, layout = layout)
+    rendered = render_page(page, ctx = ctx)
+   
+    if sitemap_path:
+        id, url = str(hash(os.path.basename(input_path or output_path or ''))), output_path
+        print(sitemap_write(sitemap_path, sitemap_update(ctx['sitemap'], id = id, loc = absolute_url(url, ctx), locrel = relative_url(url, ctx))))
+
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
+    with open(output_path, 'w') as fp:
+        fp.write(rendered)
+    
+    print(output_path)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-path', '-i')
     parser.add_argument('--output-path', '-o')
     parser.add_argument('--context-path', '-c')
-    parser.add_argument('--sitemap-path', '-s')
+    parser.add_argument('--sitemap-path')
     parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
     parser.add_argument('--snippets-dir')
+    parser.add_argument('--baseurl', '-b')
+    parser.add_argument('--siteurl')
     args = parser.parse_args()
     print(args)
     
