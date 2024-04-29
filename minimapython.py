@@ -2010,23 +2010,24 @@ snippets_default = dict(
 def render_page(content, layout, ctx, snippets = {}):
     res = base_html
     res_layout = snippets[layout + '_html']
+    res = res.replace('{{ content_base }}', res_layout)
+
     res = res.replace('{{ footer_html }}', snippets['footer_html'])
     res = res.replace('{{ header_html }}', snippets['header_html'])
     res = res.replace('{{ head_html }}', snippets['head_html'])
     res = res.replace('{{ customhead_html }}', snippets['customhead_html'])
     res = res.replace('{{ seo_html }}', snippets['seo_html'])
     res = res.replace('{{ googleanalytics_html }}', snippets['googleanalytics_html'])
-
     res = res.replace('{{ style_css }}', snippets['style_css'])
-    res = res.replace('{{ content_base }}', res_layout)
     res = res.replace('{{ comments_html }}', snippets['comments_html'])
     
     res = res.replace('{{ content }}', content)
-   
-    posts = ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])
-    ctx['post_list_html'] = '\n'.join(resolve_template_variables(snippets['post_list_html'], dict(post__date__date_format = date_format(post.get('date', '')), post__url__relative_url = relative_url(post.get('url', '')), post__title__escape = escape(post.get('title', '')), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {})) )  for post in posts)
     
-    ctx['site_header_pages_html'] = '\n'.join(snippets['site_header_pages_html'].replace('{{ page__url__relative_url }}', relative_url(page.get('url', ''))).replace('{{ page__title__escape }}', escape(page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
+    #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
+    
+    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
+    
+    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = page.get('url', ''), page__title = page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
 
     if ctx.get('page', {}).get('date') is None:
         ctx['page__date'] = None
@@ -2036,13 +2037,9 @@ def render_page(content, layout, ctx, snippets = {}):
         ctx['paginator__previous_page'] = None
     if ctx.get('paginator', {}).get('next_page') is None:
         ctx['paginator__next_page'] = None
-    #page__lang___or___site__lang___or___en
-    #page_twitter_card__or__site_twitter_card__or__summary_large_image
-    #site -> page
-    # {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
     
     if page_author := ctx.get('page', {}).get('author', ''):
-        ctx['page_author_html'] = '\n'.join(snippets['page_author_html'].replace('{{ author }}', author) for author in (page_author if isinstance(page_author, list) else [page_author]))
+        ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
     
     res = resolve_template_variables(res, ctx)
     
@@ -2060,8 +2057,8 @@ def remove_at(v):
 def date_to_xmlschema(v):
     return v
 
-def date_format(v):
-    # "%b %-d, %Y"
+def date_format(v, fmt = "%b %-d, %Y"):
+    # {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
     return v
 
 def escape(v):
