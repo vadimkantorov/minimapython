@@ -144,17 +144,13 @@ base_html = '''
 '''
 
 googleanalytics_html = '''
-<script title="https://developers.google.com/tag-platform/gtagjs/install" async src="https://www.googletagmanager.com/gtag/js?id={{ googleanalytics_tag_id }}"></script>
-<script>window.dataLayer=window.dataLayer||[];gtag=()=>dataLayer.push(arguments);if(document.cookie){gtag("js", new Date());gtag("config","{{ googleanalytics_tag_id }}");}</script>
-
-<script async src="https://www.googletagmanager.com/gtag/js?id={{ site.google_analytics }}"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ site__google_analytics }}"></script>
 <script>
-  window['ga-disable-{{ site.google_analytics }}'] = window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1";
+  window['ga-disable-{{ site__google_analytics }}'] = window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1";
   window.dataLayer = window.dataLayer || [];
   function gtag(){window.dataLayer.push(arguments);}
   gtag('js', new Date());
-
-  gtag('config', '{{ site.google_analytics }}');
+  gtag('config', '{{ site__google_analytics }}');
 </script>
 
 '''
@@ -402,13 +398,13 @@ site__minima__social_links__flickr-->
           </li>
 site__minima__social_links__gitlab-->
 
-<!--site__minima__social_links__googlescholar
+<!--site__minima__social_links__google_scholar
           <li>
-            <a href="{{ site__minima__social_links__googlescholar }}" target="_blank" title="googlescholar">
-              <svg id="googlescholar" class="svg-icon grey" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><circle opacity="0.7" cx="8.036" cy="11.08" r="4.3"/><path opacity="0.75" d="M0.585,6.505l7.42-5.885L8.03,6.582 C5.305,6.632,4.139,8.729,3.913,9.13L0.585,6.505z"/><path d="M15.415,6.509l-7.42-5.886L7.97,6.585c2.725,0.05,3.891,2.147,4.117,2.548L15.415,6.509z"/></svg>
+            <a href="{{ site__minima__social_links__google_scholar }}" target="_blank" title="google_scholar">
+              <svg id="google_scholar" class="svg-icon grey" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><circle opacity="0.7" cx="8.036" cy="11.08" r="4.3"/><path opacity="0.75" d="M0.585,6.505l7.42-5.885L8.03,6.582 C5.305,6.632,4.139,8.729,3.913,9.13L0.585,6.505z"/><path d="M15.415,6.509l-7.42-5.886L7.97,6.585c2.725,0.05,3.891,2.147,4.117,2.548L15.415,6.509z"/></svg>
             </a>
           </li>
-site__minima__social_links__googlescholar-->
+site__minima__social_links__google_scholar-->
 
 <!--site__minima__social_links__keybase
           <li>
@@ -2007,24 +2003,11 @@ snippets_default = dict(
     footer_html = footer_html,
 )
 
-def render_page(content, layout, ctx, snippets = {}):
-    res = base_html
-    res_layout = snippets[layout + '_html']
-    res = res.replace('{{ content_base }}', res_layout)
-
-    res = res.replace('{{ footer_html }}', snippets['footer_html'])
-    res = res.replace('{{ header_html }}', snippets['header_html'])
-    res = res.replace('{{ head_html }}', snippets['head_html'])
-    res = res.replace('{{ customhead_html }}', snippets['customhead_html'])
-    res = res.replace('{{ seo_html }}', snippets['seo_html'])
-    res = res.replace('{{ googleanalytics_html }}', snippets['googleanalytics_html'])
-    res = res.replace('{{ style_css }}', snippets['style_css'])
-    res = res.replace('{{ comments_html }}', snippets['comments_html'])
-    
-    res = res.replace('{{ content }}', content)
-    
+def render_page(content, layout, ctx, snippets = {}, num_snippet_renders = 5):
     #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
     
+    ctx = ctx.copy() | snippets
+
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
     
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = page.get('url', ''), page__title = page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
@@ -2040,6 +2023,15 @@ def render_page(content, layout, ctx, snippets = {}):
     
     if page_author := ctx.get('page', {}).get('author', ''):
         ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
+    
+    res = base_html
+    content_base = snippets[layout + '_html']
+   
+    res = resolve_template_variables(res, dict(content_base = content_base))
+    for k in range(num_snippet_renders):
+        res = resolve_template_variables(res, ctx)
+    
+    res = resolve_template_variables(res, dict(content = content))
     
     res = resolve_template_variables(res, ctx)
     
