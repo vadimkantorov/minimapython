@@ -2024,7 +2024,7 @@ def render_page(content, layout, ctx, snippets = {}):
     res = res.replace('{{ content }}', content)
    
     posts = ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])
-    ctx['post_list_html'] = '\n'.join(snippets['post_list_html'].replace('{{ post__date__date_format }}', date_format(post.get('date', ''))).replace('{{ post__url__relative_url }}', relative_url(post.get('url', ''))).replace('{{ post__title__escape }}', escape(post.get('title', ''))).replace('<!--site__show_excerpts\n' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('\nsite__show_excerpts-->' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('{{ post__excerpt }}', post.get('excerpt', ''))  for post in posts)
+    ctx['post_list_html'] = '\n'.join(resolve_template_variables(snippets['post_list_html'], dict(post__date__date_format = date_format(post.get('date', '')), post__url__relative_url = relative_url(post.get('url', '')), post__title__escape = escape(post.get('title', '')), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {})) )  for post in posts)
     
     ctx['site_header_pages_html'] = '\n'.join(snippets['site_header_pages_html'].replace('{{ page__url__relative_url }}', relative_url(page.get('url', ''))).replace('{{ page__title__escape }}', escape(page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
 
@@ -2044,7 +2044,7 @@ def render_page(content, layout, ctx, snippets = {}):
     if page_author := ctx.get('page', {}).get('author', ''):
         ctx['page_author_html'] = '\n'.join(snippets['page_author_html'].replace('{{ author }}', author) for author in (page_author if isinstance(page_author, list) else [page_author]))
     
-    res = substitute(res, ctx)
+    res = resolve_template_variables(res, ctx)
     
     return res
 
@@ -2067,7 +2067,7 @@ def date_format(v):
 def escape(v):
     return html.escape(v)
 
-def substitute(res, ctx, sep = '__'):
+def resolve_template_variables(res, ctx, sep = '__'):
     ctx_flat = {}
     stack = [('', ctx)]
     while stack:
