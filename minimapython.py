@@ -1,8 +1,7 @@
-# TODO: sitemap, feed, home, googleanalytics
-
 # post: title draft lang url date last_modified_at id feed.excerpt_only content author authors category categories tags description image.path image excerpt 
 # page: url collection category tags
 # site: time title lang  description author author.uri show_drafts feed.excerpt_only
+# TODO: put in ctx page/post pages/posts
 
 import os
 import json
@@ -236,13 +235,13 @@ seo_tag__image__alt-->
   <meta property="twitter:title" content="{{ seo_tag__page_title }}" />
 seo_tag__page_title-->
 
-<!--site__twitter__username__remove_at
-  <meta name="twitter:site" content="@{{ site__twitter__username__remove_at }}" />
-site__twitter__username__remove_at-->
+<!--site__twitter__username__removeATSIGN
+  <meta name="twitter:site" content="@{{ site__twitter__username__removeATSIGN }}" />
+site__twitter__username__removeATSIGN-->
 
-<!--seo_tag__author__twitter__remove_at
-    <meta name="twitter:creator" content="@{{ seo_tag__author__twitter__remove_at }}" />
-seo_tag__author__twitter__remove_at-->
+<!--seo_tag__author__twitter__removeATSIGN
+    <meta name="twitter:creator" content="@{{ seo_tag__author__twitter__removeATSIGN }}" />
+seo_tag__author__twitter__removeATSIGN-->
 
 <!--site__facebook__admins
     <meta property="fb:admins" content="{{ site__facebook__admins }}" />
@@ -2028,28 +2027,6 @@ def render_page(content, layout, ctx, snippets = {}, num_snippets_renders = 5):
     
     return res
 
-def absolute_url(v):
-    return v
-
-def relative_url(v):
-    return v
-
-def remove_at(v):
-    return v.replace('@', '')
-
-def date_to_xmlschema(v):
-    return v
-
-def date_format(v, fmt = "%b %-d, %Y"):
-    # {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
-    return v
-
-def escape(v):
-    return html.escape(v)
-
-def jsonify(v):
-    return json.dumps(v, ensure_ascii = False)
-
 def resolve_template_variables(res, ctx, sep = '__'):
     ctx_flat = {}
     stack = [('', ctx)]
@@ -2058,15 +2035,15 @@ def resolve_template_variables(res, ctx, sep = '__'):
         for k, v in dic.items():
             if isinstance(v, dict):
                 stack.append(((prefix + sep) * bool(prefix) + k, v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + jsonify.__name__] = jsonify(v)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + jsonify.__name__] = jsonify(v, ctx)
             elif v is not None:
                 ctx_flat[(prefix + sep) * bool(prefix) + k] = str(v)
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + escape.__name__] = escape(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + absolute_url.__name__] = absolute_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + relative_url.__name__] = relative_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + remove_at.__name__] = remove_at(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_to_xmlschema.__name__] = date_to_xmlschema(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_format.__name__] = date_format(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + escape.__name__] = escape(str(v), ctx)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + absolute_url.__name__] = absolute_url(str(v), ctx)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + relative_url.__name__] = relative_url(str(v), ctx)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + removeATSIGN.__name__] = removeATSIGN(str(v), ctx)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_to_xmlschema.__name__] = date_to_xmlschema(str(v), ctx)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_format.__name__] = date_format(str(v), ctx)
             else:
                 ctx_flat[(prefix + sep) * bool(prefix) + k + sep + 'is_none'] = None
 
@@ -2094,15 +2071,20 @@ def render(input_path, output_path, context_path, sitemap_path, layout, snippets
 
     snippets = snippets_default | snippets_read(snippets_dir)
 
-    res_str = render_page(content, layout = layout, ctx = ctx, snippets = snippets)
+    rendered = render_page(content, layout = layout, ctx = ctx, snippets = snippets)
+    url = output_path
+
+    id = hash(output_path)
+    abs_url = absolute_url(url, ctx)
+    rel_url = relative_url(url, ctx)
 
     if sitemap_path:
-        sitemap = sitemap_update(sitemap, ...)
-        sitemap_write(sitemap_path, sitemap)
+        sitemap = sitemap_update(sitemap, id = id, loc = abs_url, locrel = rel_url)
+        print(sitemap_write(sitemap_path, sitemap))
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
     with open(output_path, 'w') as fp:
-        fp.write(res_str)
+        fp.write(rendered)
     
     print(output_path)
 
@@ -2151,13 +2133,47 @@ def sitemap_write(path, sitemap):
             node_url.appendChild(node_doc.createElement(field)).appendChild(node_doc.createTextNode(str(value)))
     with open(path, 'w') as fp:
         node_doc.writexml(fp, addindent = '  ', newl = '\n')
+    return path
 
-def sitemap_update(sitemap, id, loc, locrel = ''):
-    k = ([i for i, u in enumerate(sitemap) if u['id'] == id or u['id'].replace('-', '') == id] or [-1])[0]
+def sitemap_update(sitemap, id = '', loc = '', locrel = '', translate = {ord('-') : '', ord('_') : ''}):
+    sitemap = sitemap[:]
+    k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id')) and u.get('id').translate(translate) == id.translate(translate)) or (bool(u.get('locrel')) and u.get('locrel') == locrel) or (bool(u.get('loc')) and u.get('loc') == loc)] or [-1])[0]
     if k == -1:
         sitemap.append({})
-    sitemap[k].update(dict(id = id, loc = loc, locrel = locrel))
+    sitemap[k] = sitemap[k] | dict(id = id, loc = loc, locrel = locrel)
     return sitemap
+
+def absolute_url(v, ctx):
+    site_url = ctx.get('site', {}).get('url', '')
+    base_url = ctx.get('site', {}).get('baseurl', '')
+    if site_url:
+        return os.path.join(site_url, base_url.strip('/'), v)
+    if base_url:
+        return os.path.join('/' + base_url.strip('/'), v)
+    return v
+
+def relative_url(v, ctx):
+    base_url = ctx.get('site', {}).get('baseurl', '')
+    if base_url:
+        return os.path.join('/' + base_url.strip('/'), v)
+    return v
+
+def removeATSIGN(v, ctx):
+    return v.replace('@', '')
+
+def date_to_xmlschema(v, ctx):
+    return v
+
+def date_format(v, ctx, fmt = "%b %-d, %Y"):
+    fmt = ctx.get('site', {}).get('minima', {}.get('date_format', fmt)
+    
+    return v
+
+def escape(v, ctx):
+    return html.escape(v)
+
+def jsonify(v, ctx):
+    return json.dumps(v, ensure_ascii = False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
