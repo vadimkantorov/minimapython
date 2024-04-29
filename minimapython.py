@@ -10,7 +10,6 @@ import html
 import argparse
 import xml.dom.minidom
 
-
 post_list_html = '''
 <li>
     <span class="post-meta">{{ post__date__date_format }}</span>
@@ -23,6 +22,14 @@ post_list_html = '''
       {{ post__excerpt }}
 site__show_excerpts-->
 </li>
+'''
+
+page_author_html = '''
+<span itemprop="author" itemscope itemtype="http://schema.org/Person"><span class="p-author h-card" itemprop="name">{{ author }}</span></span>
+'''
+
+site_header_pages_html = '''
+<a class="page-link" href="{{ page__url__relative_url }}">{{ page__title__escape }}</a>
 '''
 
 home_html = '''
@@ -62,6 +69,78 @@ paginator__next_page__is_none-->
       </div>
 
 </div>
+'''
+
+post_html = '''
+<!-- https://github.com/jekyll/minima/blob/master/_layouts/post.html -->
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">{{ page__title__escape }}</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="{{ page__date__date_to_xmlschema }}" itemprop="datePublished">
+        {{ page__date__date_format }}
+      </time>
+<!--page__modified_date__date_to_xmlschema
+        ~
+        <time class="dt-modified" datetime="{{ page__modified_date__date_to_xmlschema }}" itemprop="dateModified">
+          {{ page__modified_date__date_format }}
+        </time>
+page__modified_date__date_to_xmlschema-->
+
+<!--page_author_html
+        • {{ page_author_html }}
+page_author_html-->
+    </p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    {{ content }}
+  </div>
+
+  {{ comments_html }}
+
+  <a class="u-url" href="{{ page__url__relative_url }}" hidden></a>
+</article>
+'''
+
+page_html = '''
+<!-- https://github.com/jekyll/minima/blob/master/_layouts/page.html -->
+<article class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">{{ page__title__escape }}</h1>
+  </header>
+
+  <div class="post-content">
+    {{ content }}
+  </div>
+
+</article>
+'''
+
+base_html = '''
+<!DOCTYPE html>
+<html lang="{{ page__lang }}">
+  <!-- https://github.com/jekyll/minima/blob/master/_layouts/base.html -->
+
+  {{ head_html }}
+
+  <body>
+
+    {{ header_html }}
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        {{ content_base }}
+      </div>
+    </main>
+
+    {{ footer_html }}
+
+  </body>
+
+</html>
 '''
 
 googleanalytics_html = '''
@@ -184,23 +263,18 @@ site__facebook__app_id-->
 <!--site__webmaster_verifications__google
     <meta name="google-site-verification" content="{{ site__webmaster_verifications__google }}" />
 site__webmaster_verifications__google-->
-
 <!--site__webmaster_verifications__bing
     <meta name="msvalidate.01" content="{{ site__webmaster_verifications__bing }}" />
 site__webmaster_verifications__bing-->
-
 <!--site__webmaster_verifications__alexa
     <meta name="alexaVerifyID" content="{{ site__webmaster_verifications__alexa }}" />
 site__webmaster_verifications__alexa-->
-
 <!--site__webmaster_verifications__yandex
     <meta name="yandex-verification" content="{{ site__webmaster_verifications__yandex }}" />
 site__webmaster_verifications__yandex-->
-
 <!--site__webmaster_verifications__baidu
     <meta name="baidu-site-verification" content="{{ site__webmaster_verifications__baidu }}" />
 site__webmaster_verifications__baidu-->
-
 <!--site__webmaster_verifications__facebook
     <meta name="facebook-domain-verification" content="{{ site__webmaster_verifications__facebook }}" />
 site__webmaster_verifications__facebook-->
@@ -212,81 +286,6 @@ site__webmaster_verifications__facebook-->
 <!-- End Jekyll SEO tag -->
 '''
 
-page_author_html = '''
-<span itemprop="author" itemscope itemtype="http://schema.org/Person"><span class="p-author h-card" itemprop="name">{{ author }}</span></span>
-'''
-
-post_html = '''
-<!-- https://github.com/jekyll/minima/blob/master/_layouts/post.html -->
-<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
-
-  <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">{{ page__title__escape }}</h1>
-    <p class="post-meta">
-      <time class="dt-published" datetime="{{ page__date__date_to_xmlschema }}" itemprop="datePublished">
-        {{ page__date__date_format }}
-      </time>
-<!--page__modified_date__date_to_xmlschema
-        ~
-        <time class="dt-modified" datetime="{{ page__modified_date__date_to_xmlschema }}" itemprop="dateModified">
-          {{ page__modified_date__date_format }}
-        </time>
-page__modified_date__date_to_xmlschema-->
-
-<!--page_author_html
-        • {{ page_author_html }}
-page_author_html-->
-    </p>
-  </header>
-
-  <div class="post-content e-content" itemprop="articleBody">
-    {{ content }}
-  </div>
-
-  {{ comments_html }}
-
-  <a class="u-url" href="{{ page__url__relative_url }}" hidden></a>
-</article>
-'''
-
-page_html = '''
-<!-- https://github.com/jekyll/minima/blob/master/_layouts/page.html -->
-<article class="post">
-
-  <header class="post-header">
-    <h1 class="post-title">{{ page__title__escape }}</h1>
-  </header>
-
-  <div class="post-content">
-    {{ content }}
-  </div>
-
-</article>
-'''
-
-base_html = '''
-<!DOCTYPE html>
-<html lang="{{ page__lang }}">
-  <!-- https://github.com/jekyll/minima/blob/master/_layouts/base.html -->
-
-  {{ head_html }}
-
-  <body>
-
-    {{ header_html }}
-
-    <main class="page-content" aria-label="Content">
-      <div class="wrapper">
-        {{ content_base }}
-      </div>
-    </main>
-
-    {{ footer_html }}
-
-  </body>
-
-</html>
-'''
 
 customhead_html = '''
 <!-- customhead_html -->
@@ -309,10 +308,6 @@ head_html = '''
   {{ customhead_html }}
 
 </head>
-'''
-
-site_header_pages_html = '''
-<a class="page-link" href="{{ page__url__relative_url }}">{{ page__title__escape }}</a>
 '''
 
 header_html = '''
@@ -2095,7 +2090,36 @@ def substitute(res, ctx, sep = '__'):
     
     return res
 
-def extract_snippets(snippets_dir, snippets):
+def render(input_path, output_path, context_path, sitemap_path, layout, snippets_dir, snippets_default = snippets_default):
+    assert output_path
+    
+    content = ''
+    if input_path and os.path.exists(input_path):
+        with open(input_path) as fp:
+            content = fp.read()
+    
+    ctx = {}
+    if context_path and os.path.exists(context_path):
+        with open(context_path) as fp:
+            ctx = json.load(fp)
+    
+    sitemap = sitemap_read(sitemap_path)
+
+    snippets = snippets_default | snippets_read(snippets_dir)
+
+    res_str = render_page(content, layout = layout, ctx = ctx, snippets = snippets)
+
+    if sitemap_path:
+        sitemap = sitemap_update(sitemap, ...)
+        sitemap_write(sitemap_path, sitemap)
+
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
+    with open(output_path, 'w') as fp:
+        fp.write(res_str)
+    
+    print(output_path)
+
+def snippets_write(snippets_dir, snippets):
     os.makedirs(snippets_dir, exist_ok = True)
     for k, v in snippets.items():
         basename = k.replace('_css', '.css').replace('_html', '.html')
@@ -2104,35 +2128,16 @@ def extract_snippets(snippets_dir, snippets):
             f.write(v)
         print(path)
 
-def read_snippets(snippets_dir):
+def snippets_read(snippets_dir):
     snippets = {}
     if snippets_dir and os.path.exists(snippets_dir):
         for basename in os.listdir(snippets_dir):
             k = basename.replace('.', '_')
-            with open(os.path.join(snippets_dir, basename)) as f:
-                snippets[k] = f.read()
+            with open(os.path.join(snippets_dir, basename)) as fp:
+                snippets[k] = fp.read()
     return snippets
 
-def render(input_path, output_path, context_path, layout, snippets_dir, snippets_default = snippets_default):
-    content = open(input_path).read() if input_path and os.path.exists(input_path) else ''
-    ctx = json.load(open(context_path)) if context_path and os.path.exists(context_path) else {}
-    if snippets_dir:
-        ctx['snippets_dir'] = snippets_dir
-    if layout:
-        ctx['layout'] = layout
-
-    snippets = snippets_default | read_snippets(snippets_dir)
-
-    res_str = render_page(content, layout, ctx, snippets = snippets)
-
-    assert output_path
-    
-    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
-    open(output_path, 'w').write(res_str)
-    
-    print(output_path)
-
-def sitemap_urlset_read(path):
+def sitemap_read(path):
     xmlstr = ''
     if path and os.path.exists(path):
         with open(path, 'r') as fp:
@@ -2143,14 +2148,14 @@ def sitemap_urlset_read(path):
     assert node_doc.documentElement.nodeName == 'urlset'
     return [dict({n.nodeName : ''.join(nn.nodeValue for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE) for n in node_url.childNodes if n.nodeType == n.ELEMENT_NODE}, id = node_url.getAttribute('id')) for node_url in node_doc.documentElement.getElementsByTagName('url')]
     
-def sitemap_urlset_write(ctx, path):
+def sitemap_write(path, sitemap):
     # https://sitemaps.org/protocol.html
     node_doc = xml.dom.minidom.Document()
     node_root = node_doc.appendChild(node_doc.createElement('urlset'))
     node_root.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
     node_root.setAttribute('xsi:schemaLocation', 'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd')
     node_root.setAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
-    for entry in urlset:
+    for entry in sitemap:
         entry = entry.copy()
         node_url = node_root.appendChild(node_doc.createElement('url'))
         if entry.get('id'):
@@ -2160,19 +2165,19 @@ def sitemap_urlset_write(ctx, path):
     with open(path, 'w') as fp:
         node_doc.writexml(fp, addindent = '  ', newl = '\n')
 
-def sitemap_urlset_update(urlset, id, loc, locrel = ''):
-    k = sitemap_urlset_index(urlset, id)
+def sitemap_update(sitemap, id, loc, locrel = ''):
+    k = ([i for i, u in enumerate(sitemap) if u['id'] == id or u['id'].replace('-', '') == id] or [-1])[0]
     if k == -1:
-        urlset.append({})
-    urlset[k].update(dict(id = id, loc = loc, locrel = locrel))
-    return urlset
-
+        sitemap.append({})
+    sitemap[k].update(dict(id = id, loc = loc, locrel = locrel))
+    return sitemap
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-path', '-i')
     parser.add_argument('--output-path', '-o')
     parser.add_argument('--context-path', '-c')
+    parser.add_argument('--sitemap-path', '-s')
     parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
     parser.add_argument('--snippets-dir')
     args = parser.parse_args()
@@ -2181,4 +2186,4 @@ if __name__ == '__main__':
     if args.input_path:
         render(**vars(args), snippets_default = snippets_default)
     else:
-        extract_snippets(args.snippets_dir, snippets_default)
+        snippets_write(args.snippets_dir, snippets_default)
