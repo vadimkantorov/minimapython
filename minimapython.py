@@ -1,330 +1,14 @@
 # TODO: sitemap, feed, home, googleanalytics
 
+# post: title draft lang url date last_modified_at id feed.excerpt_only content author authors category categories tags description image.path image excerpt 
+# page: url collection category tags
+# site: time title lang  description author author.uri show_drafts feed.excerpt_only
+
 import os
 import json
 import html
 import argparse
 import xml.dom.minidom
-
-def render_page(content, layout, ctx):
-    res = base_html
-    res_layout = globals().get(layout + '_html')
-    res = res.replace('{{ footer_html }}', footer_html)
-    res = res.replace('{{ header_html }}', header_html)
-    res = res.replace('{{ head_html }}', head_html)
-    res = res.replace('{{ customhead_html }}', customhead_html)
-    res = res.replace('{{ seo_html }}', seo_html)
-    res = res.replace('{{ googleanalytics_html }}', googleanalytics_html)
-
-    res = res.replace('{{ style_css }}', style_css)
-    res = res.replace('{{ content_base }}', res_layout)
-    res = res.replace('{{ comments_html }}', comments_html)
-    
-    res = res.replace('{{ content }}', content)
-   
-    posts = ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])
-    ctx['post_list_html'] = '\n'.join(post_list_html.replace('{{ post__date__date_format }}', date_format(post.get('date', ''))).replace('{{ post__url__relative_url }}', relative_url(post.get('url', ''))).replace('{{ post__title__escape }}', escape(post.get('title', ''))).replace('<!--site__show_excerpts\n' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('\nsite__show_excerpts-->' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('{{ post__excerpt }}', post.get('excerpt', ''))  for post in posts)
-    
-    ctx['site_header_pages_html'] = '\n'.join(site_header_pages_html.replace('{{ my_page__url__relative_url }}', relative_url(page.get('url', ''))).replace('{{ my_page__title__escape }}', escape(page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
-
-    if ctx.get('page', {}).get('date') is None:
-        ctx['page__date'] = None
-    if ctx.get('seo_tag', {}).get('image') is None:
-        ctx['seo_tag__image'] = None
-    if ctx.get('paginator', {}).get('previous_page') is None:
-        ctx['paginator__previous_page'] = None
-    if ctx.get('paginator', {}).get('next_page') is None:
-        ctx['paginator__next_page'] = None
-    #page__lang___or___site__lang___or___en
-    #page_twitter_card__or__site_twitter_card__or__summary_large_image
-    #site -> page
-
-    # {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
-    
-    if page_author := ctx.get('page', {}).get('author', ''):
-        ctx['page_author_html'] = '\n'.join(page_author_html.replace('{{ author }}', author) for author in (page_author if isinstance(page_author, list) else [page_author]))
-    
-    res = substitute(res, ctx)
-    
-    return res
-
-def absolute_url(v):
-    return v
-
-def relative_url(v):
-    return v
-
-def remove_at(v):
-    return v.replace('@', '')
-
-def date_to_xmlschema(v):
-    return v
-
-def date_format(v):
-    # "%b %-d, %Y"
-    return v
-
-def escape(v):
-    return html.escape(v)
-
-def substitute(res, ctx, sep = '__'):
-    ctx_flat = {}
-    stack = [('', ctx)]
-    while stack:
-        prefix, dic = stack.pop()
-        for k, v in dic.items():
-            if isinstance(v, dict):
-                stack.append(((prefix + sep) * bool(prefix) + k, v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__jsonify'] = json.dumps(v, ensure_ascii = False)
-            elif v is not None:
-                ctx_flat[(prefix + sep) * bool(prefix) + k] = str(v)
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__escape'] = escape(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__absolute_url'] = absolute_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__relative_url'] = relative_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__remove_at'] = remove_at(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_to_xmlschema'] = date_to_xmlschema(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_format'] = date_format(str(v))
-            else:
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__is_none'] = None
-
-    for k, v in ctx_flat.items():
-        res = res.replace('<!--' + k + '\n', '').replace('\n' + k + '-->', '')
-        if v is not None:
-            res = res.replace('{{ ' + k + ' }}', v)
-    
-    return res
-
-def extract_snippets(snippets_dir, snippets):
-    os.makedirs(snippets_dir, exist_ok = True)
-    for k, v in snippets.items():
-        basename = k.replace('_css', '.css').replace('_html', '.html')
-        path = os.path.join(snippets_dir, basename)
-        with open(path, 'w') as f:
-            f.write(v)
-        print(path)
-
-def read_snippets(snippets_dir):
-    snippets = {}
-    if snippets_dir and os.path.exists(snippets_dir):
-        for basename in os.listdir(snippets_dir):
-            k = basename.replace('.', '_')
-            with open(os.path.join(snippets_dir, basename)) as f:
-                snippets[k] = f.read()
-    return snippets
-
-def render(input_path, output_path, context_path, layout, snippets_dir):
-    ctx = json.load(open(context_path)) if context_path and os.path.exists(context_path) else {}
-    if snippets_dir:
-        ctx['snippets_dir'] = snippets_dir
-    if layout:
-        ctx['layout'] = layout
-
-    content = open(input_path).read() if input_path and os.path.exists(input_path) else ''
-
-    #assert layout == 'page'
-    
-    res_str = render_page(content, layout, ctx)
-
-    assert output_path
-    
-    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
-    open(output_path, 'w').write(res_str)
-    
-    print(output_path)
-
-def sitemap_urlset_read(path):
-    xmlstr = ''
-    if path and os.path.exists(path):
-        with open(path, 'r') as fp:
-            xmlstr = fp.read()
-    if not xmlstr.strip():
-        return []
-    node_doc = xml.dom.minidom.parseString(xmlstr)
-    assert node_doc.documentElement.nodeName == 'urlset'
-    return [dict({n.nodeName : ''.join(nn.nodeValue for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE) for n in node_url.childNodes if n.nodeType == n.ELEMENT_NODE}, id = node_url.getAttribute('id')) for node_url in node_doc.documentElement.getElementsByTagName('url')]
-    
-def sitemap_urlset_write(ctx, path):
-    # https://sitemaps.org/protocol.html
-    node_doc = xml.dom.minidom.Document()
-    node_root = node_doc.appendChild(node_doc.createElement('urlset'))
-    node_root.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
-    node_root.setAttribute('xsi:schemaLocation', 'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd')
-    node_root.setAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
-    for entry in urlset:
-        entry = entry.copy()
-        node_url = node_root.appendChild(node_doc.createElement('url'))
-        if entry.get('id'):
-            node_url.setAttribute('id', entry.pop('id'))
-        for field, value in entry.items():
-            node_url.appendChild(node_doc.createElement(field)).appendChild(node_doc.createTextNode(str(value)))
-    with open(path, 'w') as fp:
-        node_doc.writexml(fp, addindent = '  ', newl = '\n')
-
-def sitemap_urlset_update(urlset, id, loc, locrel = ''):
-    k = sitemap_urlset_index(urlset, id)
-    if k == -1:
-        urlset.append({})
-    urlset[k].update(dict(id = id, loc = loc, locrel = locrel))
-    return urlset
-
-def feed_write(ctx, path, generator_name = 'minimapython', generator_uri = 'https://github.com/vadimkantorov/minima', generator_version = 'https://github.com/vadimkantorov/minimapython'):
-    site = ctx.get('site', {})
-    site__lang = site.get('lang')
-    page__url__absolute_url = ''
-    root__absolute_url = ''
-    site__time__date_to_xml_schema = ''
-    page__url__absolute_url__xml_escape = ''
-    
-    #{% assign title = site.title | default: site.name %}
-    #{% if page.collection != "posts" %}{% assign title = title | append: " | " | append: (page.collection | capitalize) %}{% endif %}
-    #{% if page.category %}{% assign title = title | append: " | " | append: (page.category | capitalize) %}{% endif %}
-    #{% if page.tags %}
-    #  {% assign posts = site.tags[page.tags] %}
-    #{% else %}
-    #  {% assign posts = site[page.collection] %}
-    #{% endif %}
-    #{% if page.category %}
-    #  {% assign posts = posts | where: "categories", page.category %}
-    #{% endif %}
-    #{% unless site.show_drafts %}
-    #  {% assign posts = posts | where_exp: "post", "post.draft != true" %}
-    #{% endunless %}
-    #{% assign posts = posts | sort: "date" | reverse %}
-    #{% assign posts_limit = site.feed.posts_limit | default: 10 %}
-
-    title__smartify__xml_escape = ''
-    site__description__xml_escape = ''
-    site__author__name__xml_escape = '' #site.author.name | default: site.author | xml_escape
-    site__author__email__xml_escape = ''
-    site__author__uri__xml_escape = ''
-    posts = []
-    posts_limit = 0
-
-    node_doc = xml.dom.minidom.Document()
-    node_root = node_doc.appendChild(node_doc.createElement('feed'))
-    if site__lang:
-        node_root.setAttribute('xml:lang', site__lang)
-    node_root.setAttribute('xmlns', 'http://www.w3.org/2005/Atom')
-
-    node_generator = node_root.appendChild(node_doc.createElement('generator'))
-    node_generator.setAttribute('uri', generator_uri)
-    node_generator.setAttribute('version', generator_version)
-    node_generator.appendChild(node_generator.createTextNode(generator_name))
-    
-    node_link = node_root.appendChild(node_link.createElement('link'))
-    node_link.setAttribute('href', page__url__absolute_url)
-    node_link.setAttribute('rel', 'self')
-    node_link.setAttribute('type', 'application/atom+xml')
-    node_link = node_root.appendChild(node_link.createElement('link'))
-    node_link.setAttribute('href', root__absolute_url)
-    node_link.setAttribute('rel', 'alternate')
-    node_link.setAttribute('type', 'text/html')
-    if site__lang:
-        node_link.setAttribute('hreflang', site__lang)
-    
-    node_root.appendChild(node_doc.createElement('updated')).appendChild(node_doc.createTextNode(site__time__date_to_xml_schema))
-
-    node_root.appendChild(node_doc.createElement('id')).appendChild(node_doc.createTextNode(page__url__absolute_url__xml_escape))
- 
-    if title__smartify__xml_escape:
-        node_root.appendChild(node_doc.createElement('title')).appendChild(node_doc.createTextNode(title__smartify__xml_escape))
-   
-    if site__description__xml_escape:
-        node_root.appendChild(node_doc.createElement('subtitle')).appendChild(node_doc.createTextNode(site__description__xml_escape))
-    
-    if site__author__name__xml_escape:
-        node_author = node_root.appendChild(node_doc.createElement('author'))
-        node_author.appendChild(node_doc.createElement('name')).appendChild(node_doc.createTextNode(site__author__name__xml_escape))
-        if site__author__email__xml_escape:
-            node_author.appendChild(node_author.createElement('email')).appendChild(node_doc.createTextNode(site__author__email__xml_escape))
-        if site__author__uri__xml_escape:
-            node_author.appendChild(node_author.createElement('uri')).appendChild(node_doc.createTextNode(site__author__uri__xml_escape))
-
-    for post in posts[:posts_limit]:
-        post__lang = ''
-        post__title = '' #{% assign post_title = post.title | smartify | strip_html | normalize_whitespace | xml_escape %}
-        post__url__absolute_url = ''
-        post__last_modified_at__date_to_xmlschema = ''
-        post__date__date_to_xmlschema = ''
-        post__id__absolute_url__xml_escape = ''
-        post_author_name__xml_escape = ''
-        post__author__email__xml_escape = ''
-        post__author__uri__xml_escape = ''
-        excerpt_only = False
-        post__url__absolute_url__xml_escape = ''
-        post__content__strip = ''
-        post__category__xml_escape = ''
-        post__categories__xml_escape = []
-        post__tags__xml_escape = []
-        post_summary__strip_html__normalize_whitespace = ''
-        post_image__xml_escape = ''
-        # {% assign excerpt_only = post.feed.excerpt_only | default: site.feed.excerpt_only %}
-        # {% assign post_author = post.author | default: post.authors[0] | default: site.author %}
-        # {% assign post_author = site.data.authors[post_author] | default: post_author %}
-        # {% assign post_author_email = post_author.email | default: nil %}
-        # {% assign post_author_uri = post_author.uri | default: nil %}
-        # {% assign post_author_name = post_author.name | default: post_author %}
-        # {% assign post_summary = post.description | default: post.excerpt %}
-        # {% assign post_image = post.image.path | default: post.image %}
-        # {% unless post_image contains "://" %}{% assign post_image = post_image | absolute_url %}{% endunless %}
-
-
-        node_entry = node_root.appendChild(node_doc.createElement('entry'))
-        if post__lang:
-            node_entry.setAttribute('xml:lang', post__lang)
-
-        node_title = node_entry.appendChild(node_doc.createElement('title'))
-        node_title.setAttribute('type', 'html')
-        node_title.appendChild(node_doc.createTextNode(post_title))
-
-        node_link = node_entry.appendChild(node_link.createElement('link'))
-        node_link.setAttribute('href', post__url__absolute_url)
-        node_link.setAttribute('title', post__title)
-        node_link.setAttribute('rel', 'alternate')
-        node_link.setAttribute('type', 'text/html')
-    
-        node_entry.appendChild(node_doc.createElement('published')).appendChild(node_doc.createTextNode(post__date__date_to_xmlschema))
-        node_entry.appendChild(node_doc.createElement('updated')).appendChild(node_doc.createTextNode(post__last_modified_at__date_to_xmlschema))
-        node_entry.appendChild(node_doc.createElement('id')).appendChild(node_doc.createTextNode(post__id__absolute_url__xml_escape))
-        
-        node_author = node_entry.appendChild(node_doc.createElement('author'))
-        node_author.appendChild(node_doc.createElement('name')).appendChild(node_doc.createTextNode(post_author_name__xml_escape))
-        if post__author__email__xml_escape:
-            node_author.appendChild(node_author.createElement('email')).appendChild(node_doc.createTextNode(post__author__email__xml_escape))
-        if post__author__uri__xml_escape:
-            node_author.appendChild(node_author.createElement('uri')).appendChild(node_doc.createTextNode(post__author__uri__xml_escape))
-
-        if not excerpt_only:
-            node_content = node_entry.appendChild(node_doc.createElement('content'))
-            node_content.setAttribute('type', 'html')
-            node_content.setAttribute('xml:base', post__url__absolute_url__xml_escape)
-            node_content.appendChild(node_doc.createCDATASection(post__content__strip))
-
-        if post__category__xml_escape:
-            node_entry.appendChild(node_doc.createElement('category')).setAttribute('term', post__category__xml_escape)
-        
-        for post__category__xml_escape in post__categories__xml_escape:
-            node_entry.appendChild(node_doc.createElement('category')).setAttribute('term', post__category__xml_escape)
-        
-        for tag__xml_escape in post__tags__xml_escape:
-            node_entry.appendChild(node_doc.createElement('category')).setAttribute('term', tag__xml_escape)
-
-        if post_summary__strip_html__normalize_whitespace:
-            node_content = node_entry.appendChild(node_doc.createElement('summary'))
-            node_content.setAttribute('type', 'html')
-            node_content.appendChild(node_doc.createCDATASection(post_summary__strip_html__normalize_whitespace))
-
-        if post_image__xml_escape:
-            node_mediathumbnail = node_entry.appendChild(node_doc.createElement('media:thumbnail'))
-            node_mediathumbnail.setAttribute('xmlns:media', 'http://search.yahoo.com/mrss/')
-            node_mediathumbnail.setAttribute('url', post_image__xml_escape)
-            node_mediacontent = node_entry.appendChild(node_doc.createElement('media:content'))
-            node_mediacontent.setAttribute('xmlns:media', 'http://search.yahoo.com/mrss/')
-            node_mediacontent.setAttribute('url', post_image__xml_escape)
-            node_mediacontent.setAttribute('medium', 'image')
-
-    with open(path, 'w') as fp:
-        node_doc.writexml(fp, addindent = '  ', newl = '\n')
 
 
 post_list_html = '''
@@ -628,7 +312,7 @@ head_html = '''
 '''
 
 site_header_pages_html = '''
-<a class="page-link" href="{{ my_page__url__relative_url }}">{{ my_page__title__escape }}</a>
+<a class="page-link" href="{{ page__url__relative_url }}">{{ page__title__escape }}</a>
 '''
 
 header_html = '''
@@ -2304,6 +1988,186 @@ style_css = '''
 ''' + minimacss_classic_css
 
 
+snippets_default = dict(
+    style_css = style_css,
+
+    home_html = home_html,
+    post_html = post_html,
+    page_html = page_html,
+    base_html = base_html,
+
+    googleanalytics_html = googleanalytics_html,
+    comments_html = comments_html,
+    seo_html = seo_html,
+    page_author_html = page_author_html,
+    customhead_html = customhead_html,
+    head_html = head_html,
+    site_header_pages_html = site_header_pages_html,
+    post_list_html = post_list_html,
+    header_html = header_html,
+    footer_html = footer_html,
+)
+
+def render_page(content, layout, ctx, snippets = {}):
+    res = base_html
+    res_layout = snippets[layout + '_html']
+    res = res.replace('{{ footer_html }}', snippets['footer_html'])
+    res = res.replace('{{ header_html }}', snippets['header_html'])
+    res = res.replace('{{ head_html }}', snippets['head_html'])
+    res = res.replace('{{ customhead_html }}', snippets['customhead_html'])
+    res = res.replace('{{ seo_html }}', snippets['seo_html'])
+    res = res.replace('{{ googleanalytics_html }}', snippets['googleanalytics_html'])
+
+    res = res.replace('{{ style_css }}', snippets['style_css'])
+    res = res.replace('{{ content_base }}', res_layout)
+    res = res.replace('{{ comments_html }}', snippets['comments_html'])
+    
+    res = res.replace('{{ content }}', content)
+   
+    posts = ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])
+    ctx['post_list_html'] = '\n'.join(snippets['post_list_html'].replace('{{ post__date__date_format }}', date_format(post.get('date', ''))).replace('{{ post__url__relative_url }}', relative_url(post.get('url', ''))).replace('{{ post__title__escape }}', escape(post.get('title', ''))).replace('<!--site__show_excerpts\n' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('\nsite__show_excerpts-->' * bool(ctx.get('site', {}).get('show_excerpts')), '').replace('{{ post__excerpt }}', post.get('excerpt', ''))  for post in posts)
+    
+    ctx['site_header_pages_html'] = '\n'.join(snippets['site_header_pages_html'].replace('{{ page__url__relative_url }}', relative_url(page.get('url', ''))).replace('{{ page__title__escape }}', escape(page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
+
+    if ctx.get('page', {}).get('date') is None:
+        ctx['page__date'] = None
+    if ctx.get('seo_tag', {}).get('image') is None:
+        ctx['seo_tag__image'] = None
+    if ctx.get('paginator', {}).get('previous_page') is None:
+        ctx['paginator__previous_page'] = None
+    if ctx.get('paginator', {}).get('next_page') is None:
+        ctx['paginator__next_page'] = None
+    #page__lang___or___site__lang___or___en
+    #page_twitter_card__or__site_twitter_card__or__summary_large_image
+    #site -> page
+    # {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+    
+    if page_author := ctx.get('page', {}).get('author', ''):
+        ctx['page_author_html'] = '\n'.join(snippets['page_author_html'].replace('{{ author }}', author) for author in (page_author if isinstance(page_author, list) else [page_author]))
+    
+    res = substitute(res, ctx)
+    
+    return res
+
+def absolute_url(v):
+    return v
+
+def relative_url(v):
+    return v
+
+def remove_at(v):
+    return v.replace('@', '')
+
+def date_to_xmlschema(v):
+    return v
+
+def date_format(v):
+    # "%b %-d, %Y"
+    return v
+
+def escape(v):
+    return html.escape(v)
+
+def substitute(res, ctx, sep = '__'):
+    ctx_flat = {}
+    stack = [('', ctx)]
+    while stack:
+        prefix, dic = stack.pop()
+        for k, v in dic.items():
+            if isinstance(v, dict):
+                stack.append(((prefix + sep) * bool(prefix) + k, v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__jsonify'] = json.dumps(v, ensure_ascii = False)
+            elif v is not None:
+                ctx_flat[(prefix + sep) * bool(prefix) + k] = str(v)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__escape'] = escape(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__absolute_url'] = absolute_url(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__relative_url'] = relative_url(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__remove_at'] = remove_at(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_to_xmlschema'] = date_to_xmlschema(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_format'] = date_format(str(v))
+            else:
+                ctx_flat[(prefix + sep) * bool(prefix) + k + '__is_none'] = None
+
+    for k, v in ctx_flat.items():
+        res = res.replace('<!--' + k + '\n', '').replace('\n' + k + '-->', '')
+        if v is not None:
+            res = res.replace('{{ ' + k + ' }}', v)
+    
+    return res
+
+def extract_snippets(snippets_dir, snippets):
+    os.makedirs(snippets_dir, exist_ok = True)
+    for k, v in snippets.items():
+        basename = k.replace('_css', '.css').replace('_html', '.html')
+        path = os.path.join(snippets_dir, basename)
+        with open(path, 'w') as f:
+            f.write(v)
+        print(path)
+
+def read_snippets(snippets_dir):
+    snippets = {}
+    if snippets_dir and os.path.exists(snippets_dir):
+        for basename in os.listdir(snippets_dir):
+            k = basename.replace('.', '_')
+            with open(os.path.join(snippets_dir, basename)) as f:
+                snippets[k] = f.read()
+    return snippets
+
+def render(input_path, output_path, context_path, layout, snippets_dir, snippets_default = snippets_default):
+    content = open(input_path).read() if input_path and os.path.exists(input_path) else ''
+    ctx = json.load(open(context_path)) if context_path and os.path.exists(context_path) else {}
+    if snippets_dir:
+        ctx['snippets_dir'] = snippets_dir
+    if layout:
+        ctx['layout'] = layout
+
+    snippets = snippets_default | read_snippets(snippets_dir)
+
+    res_str = render_page(content, layout, ctx, snippets = snippets)
+
+    assert output_path
+    
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
+    open(output_path, 'w').write(res_str)
+    
+    print(output_path)
+
+def sitemap_urlset_read(path):
+    xmlstr = ''
+    if path and os.path.exists(path):
+        with open(path, 'r') as fp:
+            xmlstr = fp.read()
+    if not xmlstr.strip():
+        return []
+    node_doc = xml.dom.minidom.parseString(xmlstr)
+    assert node_doc.documentElement.nodeName == 'urlset'
+    return [dict({n.nodeName : ''.join(nn.nodeValue for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE) for n in node_url.childNodes if n.nodeType == n.ELEMENT_NODE}, id = node_url.getAttribute('id')) for node_url in node_doc.documentElement.getElementsByTagName('url')]
+    
+def sitemap_urlset_write(ctx, path):
+    # https://sitemaps.org/protocol.html
+    node_doc = xml.dom.minidom.Document()
+    node_root = node_doc.appendChild(node_doc.createElement('urlset'))
+    node_root.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
+    node_root.setAttribute('xsi:schemaLocation', 'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd')
+    node_root.setAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
+    for entry in urlset:
+        entry = entry.copy()
+        node_url = node_root.appendChild(node_doc.createElement('url'))
+        if entry.get('id'):
+            node_url.setAttribute('id', entry.pop('id'))
+        for field, value in entry.items():
+            node_url.appendChild(node_doc.createElement(field)).appendChild(node_doc.createTextNode(str(value)))
+    with open(path, 'w') as fp:
+        node_doc.writexml(fp, addindent = '  ', newl = '\n')
+
+def sitemap_urlset_update(urlset, id, loc, locrel = ''):
+    k = sitemap_urlset_index(urlset, id)
+    if k == -1:
+        urlset.append({})
+    urlset[k].update(dict(id = id, loc = loc, locrel = locrel))
+    return urlset
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-path', '-i')
@@ -2313,4 +2177,8 @@ if __name__ == '__main__':
     parser.add_argument('--snippets-dir')
     args = parser.parse_args()
     print(args)
-    render(**vars(args))
+    
+    if args.input_path:
+        render(**vars(args), snippets_default = snippets_default)
+    else:
+        extract_snippets(args.snippets_dir, snippets_default)
