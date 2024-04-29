@@ -2003,15 +2003,12 @@ snippets_default = dict(
     footer_html = footer_html,
 )
 
-def render_page(content, layout, ctx, snippets = {}, num_snippet_renders = 5):
+def render_page(content, layout, ctx, snippets = {}, num_snippets_renders = 5):
     #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
     
     ctx = ctx.copy() | snippets
-
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
-    
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = page.get('url', ''), page__title = page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
-
     if ctx.get('page', {}).get('date') is None:
         ctx['page__date'] = None
     if ctx.get('seo_tag', {}).get('image') is None:
@@ -2020,19 +2017,13 @@ def render_page(content, layout, ctx, snippets = {}, num_snippet_renders = 5):
         ctx['paginator__previous_page'] = None
     if ctx.get('paginator', {}).get('next_page') is None:
         ctx['paginator__next_page'] = None
-    
     if page_author := ctx.get('page', {}).get('author', ''):
         ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
     
-    res = base_html
-    content_base = snippets[layout + '_html']
-   
-    res = resolve_template_variables(res, dict(content_base = content_base))
-    for k in range(num_snippet_renders):
+    res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets[layout + '_html']))
+    for k in range(num_snippets_renders):
         res = resolve_template_variables(res, ctx)
-    
     res = resolve_template_variables(res, dict(content = content))
-    
     res = resolve_template_variables(res, ctx)
     
     return res
@@ -2056,6 +2047,9 @@ def date_format(v, fmt = "%b %-d, %Y"):
 def escape(v):
     return html.escape(v)
 
+def jsonify(v):
+    return json.dumps(v, ensure_ascii = False)
+
 def resolve_template_variables(res, ctx, sep = '__'):
     ctx_flat = {}
     stack = [('', ctx)]
@@ -2064,17 +2058,17 @@ def resolve_template_variables(res, ctx, sep = '__'):
         for k, v in dic.items():
             if isinstance(v, dict):
                 stack.append(((prefix + sep) * bool(prefix) + k, v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__jsonify'] = json.dumps(v, ensure_ascii = False)
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + jsonify.__name__] = jsonify(v)
             elif v is not None:
                 ctx_flat[(prefix + sep) * bool(prefix) + k] = str(v)
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__escape'] = escape(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__absolute_url'] = absolute_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__relative_url'] = relative_url(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__remove_at'] = remove_at(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_to_xmlschema'] = date_to_xmlschema(str(v))
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__date_format'] = date_format(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + escape.__name__] = escape(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + absolute_url.__name__] = absolute_url(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + relative_url.__name__] = relative_url(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + remove_at.__name__] = remove_at(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_to_xmlschema.__name__] = date_to_xmlschema(str(v))
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + date_format.__name__] = date_format(str(v))
             else:
-                ctx_flat[(prefix + sep) * bool(prefix) + k + '__is_none'] = None
+                ctx_flat[(prefix + sep) * bool(prefix) + k + sep + 'is_none'] = None
 
     for k, v in ctx_flat.items():
         res = res.replace('<!--' + k + '\n', '').replace('\n' + k + '-->', '')
