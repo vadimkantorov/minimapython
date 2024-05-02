@@ -1,13 +1,17 @@
-# post: title draft lang url date last_modified_at id feed.excerpt_only content author authors category categories tags description image.path image excerpt 
-# page: url collection category tags
-# site: time title lang  description author author.uri show_drafts feed.excerpt_only
-# TODO: put in ctx page/post pages/posts
-
 import os
 import json
 import html
 import argparse
 import xml.dom.minidom
+
+try:
+    # python -m pip install --user markdown markdown-captions markdown-checklist pymdown-extensions mdx_truly_sane_lists
+    import markdown
+except:
+    markdown = None
+
+markdown_extensions = ['meta', 'tables', 'markdown_captions', 'pymdownx.tilde', 'pymdownx.superfences', 'mdx_truly_sane_lists', 'pymdownx.tasklist']
+markdown_extension_configs = { 'mdx_truly_sane_lists' : dict(nested_indent = 4, truly_sane = True), 'pymdownx.tasklist' : dict(clickable_checkbox = True) }
 
 post_list_html = '''
 <li>
@@ -2007,7 +2011,7 @@ def render_page(page, ctx, num_snippets_renders = 5):
 
     ctx = ctx.copy() | snippets
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
-    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = page.get('url', ''), page__title = page.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if page.get('path') == path)
+    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = ctx['page'].get('url', ''), page__title = ctx['page'].get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if ctx['page'].get('path') == path)
     if ctx.get('page', {}).get('date') is None:
         ctx['page__date'] = None
     if ctx.get('seo_tag', {}).get('image') is None:
@@ -2019,7 +2023,7 @@ def render_page(page, ctx, num_snippets_renders = 5):
     if page_author := ctx.get('page', {}).get('author', ''):
         ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
 
-    res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets[page['layout'] + '_html']))
+    res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets.get(page['layout'] + '_html', '')))
     for k in range(num_snippets_renders):
         res = resolve_template_variables(res, ctx)
     res = resolve_template_variables(res, dict(content = page['renderer'](page['content'], ctx)))
@@ -2140,28 +2144,62 @@ def jsonify(v, ctx):
 def removeATSIGN(v, ctx):
     return v.replace('@', '')
 
-def read_page(input_path, layout = ''):
+def yaml_loads(content):
+    lines = content.strip().splitlines()
+    res = {}
+    keyprev = ''
+    for line in lines:
+        splitted = line.split(':', maxsplit = 1)
+        list_val = line.strip().split('- ', maxsplit = 1)[-1]
+        key, val = splitted[0].strip(), splitted[1].strip() if len(splitted) > 1 else ''
+        is_list_item = line.lstrip().startswith('- ')
+        
+        if not is_list_item:
+            res[key] = (val[1:-1] if val[0] == val[-1] == '"' else val) if val else []
+            keyprev = key
+        else:
+            res[keyprev].append(list_val)
+    return res
+
+def read_page(input_path, layout = '', force_plain = False, front_matter_header = '---'):
     content = ''
     if input_path and os.path.exists(input_path):
         with open(input_path) as fp:
             content = fp.read()
+    content = content.strip()
+    frontmatter = {}
 
-    renderer = render_markdown if input_path.endswith('.md') else render_plain
-    return dict(frontmatter = dict(), layout = layout, content = content, renderer = renderer)
+    if content.startswith(front_matter_header):
+        splitted = content.split(front_matter_header, maxsplit = 2)
+        frontmatter_yaml, content = splitted[1:]
+        content = content.strip()
+        try:
+            frontmatter = yaml_loads(frontmatter_yaml)
+        except:
+            print('ERROR: cannot parse frontmatter:', frontmatter_yaml)
+            frontmatter = {}
+        
+        layout = frontmatter.get('layout') or layout
+
+    is_markdown = input_path.endswith('.md')
+    if is_markdown and force_plain is False:
+        assert markdown is not None, 'ERROR: [markdown] python package must be installed or [--force-plain] must be used'
+        
+    renderer = render_markdown if (is_markdown and force_plain is False) else render_plain
+    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer)
 
 def render_markdown(content, ctx):
-    return content
+    return markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
 
 def render_plain(content, ctx):
     return content
 
-def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, snippets_default = {}):
-    #page__lang___or___site__lang___or___en page_twitter_card__or__site_twitter_card__or__summary_large_image site -> page
+def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page = {}, snippets_default = {}):
     ctx = {}
     if context_path and os.path.exists(context_path):
         with open(context_path) as fp:
             ctx = json.load(fp)
-    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, content = '') | ctx
+    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {}) | ctx
     if baseurl:
         ctx['baseurl'] = baseurl
     if siteurl:
@@ -2169,17 +2207,89 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, sn
     
     ctx['sitemap'] = sitemap_read(sitemap_path)
     ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
+    ctx['root'] = '/'
+    
+    #ctx['site'] = dict(
+    #    time = 
+    #    title = 
+    #    lang = 
+    #    description = 
+    #    author = dict(
+    #        uri = ''
+    #    )
+    #    show_drafts = 
+    #    feed = dict(
+    #        excerpt_only
+    #    )
+    #)
+    
+    ctx['page'] = dict(
+        lang = page['frontmatter'].get('lang') or ctx['site'].get('lang') or 'en', 
+        twitter = dict(card = page['frontmatter'].get('twitter__card') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
+
+        id = 'asd123',
+        description = '',
+        image = dict(path = ''),
+        feed = dict(excerpt_only = False),
+        excerpt = '',
+        content = '',
+        url           = 'https://hello',
+        title         = 'title',
+        list_title    = 'Archive',
+        date          = '2024/04/24',
+        modified_date = '2024/04/24',
+        last_modified_at = '2024/04/24',
+        draft         = False,
+        author        = ['Vadim Kantorov'],
+        authors       = [],
+        collection    = 'foobar',
+        category      = 'asd',
+        categories    = ['asd', 'def'],
+        tags          = ['foo', 'bar'],
+    )
+
+    ctx['post'] = ctx['page']
+
+    snippet = lambda s, maxlen = 500: s[:500] + '...'
+    format_string = lambda s: s # :markdownify, :strip_html, :normalize_whitespace, :escape_once,
+
+    ctx['seo_tag'] = dict(
+        canonical_url = ctx['page'].get('canonical_url', '') or absolute_url(ctx['page'].get('url', ''), ctx).replace('/index.html', ''),
+        page_locale = (ctx['page'].get('locale', '') or ctx['site'].get('locale', '') or (ctx['page'].get('lang', '') or ctx['site'].get('lang', '') or 'en_US')).replace('-', '_'),
+        description = snippet(format_string(ctx['page'].get('description', '') or ctx['page'].get('excerpt', '')) or format_string(ctx['site'].get('description', ''))),
+        site_title = format_string(ctx['site'].get('title', '') or ctx['site'].get('name', '')), 
+    )
+    ctx['seo_tag']['page_title'] = format_string(ctx['page'].get('title', '')) or ctx['seo_tag']['site_title']
+    ctx['seo_tag']['title'] = ctx['seo_tag']['page_title']
+
+    ctx['seo_tag']['author'] = ctx['page'].get('author') or (ctx['page'].get('authors')[0] if ctx['page'].get('authors', []) and len(ctx['page'].get('authors', [])) > 0 else ctx['site'].get('author')) or {}
+    if isinstance(ctx['seo_tag']['author'], str) and ctx['site'].get('data', {}).get('authors', {}):
+        ctx['seo_tag']['author'] = ctx['site'].get('data', {}).get('authors', {}).get(ctx['seo_tag']['author'], dict(name = ctx['seo_tag']['author']))
+    if not isinstance(ctx['seo_tag']['author'], dict):
+       ctx['seo_tag']['author'] = dict(name = ctx['seo_tag']['author'])
+    ctx['seo_tag']['image'] = ctx['page'].get('image', {}) or ctx['site'].get('image', {}) # https://github.com/jekyll/jekyll-seo-tag/blob/master/lib/jekyll-seo-tag/image_drop.rb
+    
+    ctx['seo_tag']['json_ld'] = {
+        '@context' : 'https://schema.org',
+        '@type' : ctx['page'].get('seo', {}).get('type', '') or ('WebSite' if ctx['page'].get('homepage_or_about') is True else 'BlogPosting' if ctx['page'].get('date') else 'WebPage'),
+        'description' : ctx['seo_tag']['description'],
+        'url': ctx['seo_tag']['canonical_url'],
+        'headline' : ctx['seo_tag']['page_title'],
+        'name': format_string(ctx['page'].get('seo', {}).get('name', '')) or ('' if ctx['page'].get('homepage_or_about') is not True else (format_string(ctx['site'].get('social', {}).get('name', '')) or ctx['seo_tag'].get('site_title', ''))),
+        'author' : {} if not ctx['seo_tag']['author'].get('name') else {'@type' : ctx['seo_tag']['author']['type'] if ctx['seo_tag']['author'].get('type') in ['Organization', 'Person'] else 'Person', 'name' : ctx['seo_tag']['author']['name'], **(dict(url = ctx['seo_tag']['author']['url']) if ctx['seo_tag']['author'].get('url') else {} )}
+    }
+
     return ctx
     
 
-def render(output_path, input_path = '', context_path = '', sitemap_path = '', snippets_dir = '', layout = '', baseurl = '', siteurl = '', snippets_default = snippets_default):
+def render(output_path, input_path = '', context_path = '', sitemap_path = '', snippets_dir = '', layout = '', baseurl = '', siteurl = '', snippets_default = snippets_default, force_plain  = False):
     # https://jekyllrb.com/docs/configuration/options/
     # https://jekyllrb.com/docs/variables/
 
     assert output_path
 
-    ctx = build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, snippets_default)
-    page = read_page(input_path, layout = layout)
+    page = read_page(input_path, layout = layout, force_plain = bool(force_plain))
+    ctx = build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default)
     rendered = render_page(page, ctx = ctx)
    
     if sitemap_path:
@@ -2199,6 +2309,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-path', '-o')
     parser.add_argument('--context-path', '-c')
     parser.add_argument('--sitemap-path')
+    parser.add_argument('--force-plain', action = 'store_true')
     parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
     parser.add_argument('--snippets-dir')
     parser.add_argument('--baseurl', '-b')
