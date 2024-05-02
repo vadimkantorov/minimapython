@@ -2,6 +2,7 @@ import os
 import json
 import html
 import argparse
+import datetime
 import xml.dom.minidom
 
 try:
@@ -2161,7 +2162,7 @@ def yaml_loads(content):
             res[keyprev].append(list_val)
     return res
 
-def read_page(input_path, layout = '', force_plain = False, front_matter_header = '---'):
+def read_page(input_path, layout = '', force_plain = False, front_matter_header = '---', extra = {}):
     content = ''
     if input_path and os.path.exists(input_path):
         with open(input_path) as fp:
@@ -2186,7 +2187,7 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
         assert markdown is not None, 'ERROR: [markdown] python package must be installed or [--force-plain] must be used'
         
     renderer = render_markdown if (is_markdown and force_plain is False) else render_plain
-    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer)
+    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = '') | extra
 
 def render_markdown(content, ctx):
     return markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
@@ -2195,6 +2196,7 @@ def render_plain(content, ctx):
     return content
 
 def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page = {}, snippets_default = {}):
+    # https://jekyllrb.com/docs/variables/
     ctx = {}
     if context_path and os.path.exists(context_path):
         with open(context_path) as fp:
@@ -2223,32 +2225,45 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, pa
     #    )
     #)
     
-    ctx['page'] = dict(
-        lang = page['frontmatter'].get('lang') or ctx['site'].get('lang') or 'en', 
-        twitter = dict(card = page['frontmatter'].get('twitter__card') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        id = 'asd123',
-        description = '',
-        image = dict(path = ''),
-        feed = dict(excerpt_only = False),
-        excerpt = '',
-        content = '',
-        url           = 'https://hello',
-        title         = 'title',
-        list_title    = 'Archive',
-        date          = '2024/04/24',
-        modified_date = '2024/04/24',
-        last_modified_at = '2024/04/24',
-        draft         = False,
-        author        = ['Vadim Kantorov'],
-        authors       = [],
-        collection    = 'foobar',
-        category      = 'asd',
-        categories    = ['asd', 'def'],
-        tags          = ['foo', 'bar'],
+    ctx['page'] = dict(
+        lang          = page['frontmatter'].get('lang') or ctx['site'].get('lang') or 'en', 
+        title         = page['frontmatter'].get('title', ''),
+        list_title    = page['frontmatter'].get('list_title', '') or ctx['site'].get('list_title', ''),
+        description   = page['frontmatter'].get('description', ''),
+        category      = page['frontmatter'].get('category', ''),
+        permalink     = page['frontmatter'].get('permalink', ''),
+        draft         = page['frontmatter'].get('draft') == 'true',
+        published     = page['frontmatter'].get('published') != 'false',
+        content       = page['content'],
+        categories    = page['frontmatter']['categories'] if isinstance(page['frontmatter'].get('categories'), list) else (page['frontmatter'].get('categories', '').split() or ([page['frontmatter']['category']] if page['frontmatter'].get('category') else [])),
+        tags          = page['frontmatter']['tags'] if isinstance(page['frontmatter'].get('tags'), list) else (page['frontmatter'].get('tags', '').split() or ([page['frontmatter']['tag']] if page['frontmatter'].get('tag') else [])),
+        author       = page['frontmatter']['author'] if isinstance(page['frontmatter'].get('author'), list) else page['frontmatter']['author'] if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter']['author']] if page['frontmatter'].get('author') else ctx['site'].get('author', []),
+        collection    = page['frontmatter'].get('collection', ''),
+        date          = page['frontmatter'].get('date') or now,
+        modified_date = page['frontmatter'].get('modified_date', ''),
+        path          = page['path'],
+        dir           = page['frontmatter'].get('permalink', ctx['site']['baseurl']),
+        
+        excerpt       = page['frontmatter'].get('excerpt', '') or page['content'].strip().split('\n')[0],
+        url           = page['frontmatter'].get('url', '') or page['frontmatter'].get('permalink', '') or page['output_path'],
+        
+        id = page['frontmatter'].get('id') or page['path'],
+
+        twitter = dict(card = page['frontmatter'].get('twitter__card') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
+        image = dict(path = page['frontmatter'].get('image'), height = "0", width = "0", alt = ""),
+
+        previous = None,
+        next = None
     )
 
+    breakpoint()
+
     ctx['post'] = ctx['page']
+
+    ctx['site']['posts'] = []
+    ctx['site']['pages'] = []
 
     snippet = lambda s, maxlen = 500: s[:500] + '...'
     format_string = lambda s: s # :markdownify, :strip_html, :normalize_whitespace, :escape_once,
@@ -2284,11 +2299,10 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, pa
 
 def render(output_path, input_path = '', context_path = '', sitemap_path = '', snippets_dir = '', layout = '', baseurl = '', siteurl = '', snippets_default = snippets_default, force_plain  = False):
     # https://jekyllrb.com/docs/configuration/options/
-    # https://jekyllrb.com/docs/variables/
 
     assert output_path
 
-    page = read_page(input_path, layout = layout, force_plain = bool(force_plain))
+    page = read_page(input_path, layout = layout, force_plain = bool(force_plain), extra = dict(output_path = output_path))
     ctx = build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default)
     rendered = render_page(page, ctx = ctx)
    
