@@ -2011,8 +2011,10 @@ def render_page(page, ctx, num_snippets_renders = 5):
     snippets = ctx['snippets']
 
     ctx = ctx.copy() | snippets
-    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = post.get('date', ''), post__url = post.get('url', ''), post__title = post.get('title', ''), post__excerpt  = post.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for post in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
-    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = ctx['page'].get('url', ''), page__title = ctx['page'].get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for page in ctx.get('site', {}).get('pages', []) if ctx['page'].get('path') == path)
+    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = p.get('date', ''), post__url = p.get('url', ''), post__title = p.get('title', ''), post__excerpt  = p.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
+    
+    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if ctx['page'].get('path') == path)
+    
     if ctx.get('page', {}).get('date') is None:
         ctx['page__date'] = None
     if ctx.get('seo_tag', {}).get('image') is None:
@@ -2196,13 +2198,23 @@ def render_markdown(content, ctx):
 def render_plain(content, ctx):
     return content
 
-def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page = {}, snippets_default = {}):
+def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page = {}, snippets_default = {},
+
+    paginator_previous_page_path = '',
+    paginator_next_page_path = '',
+    paginator_page = None,
+    paginator_previous_page = None,   
+    paginator_next_page = None,
+):
     # https://jekyllrb.com/docs/variables/
-    ctx = {}
-    if context_path and os.path.exists(context_path):
-        with open(context_path) as fp:
-            ctx = json.load(fp)
-    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {}) | ctx
+    cfg = {}
+    if site_config_path and os.path.exists(site_config_path):
+        with open(site_config_path) as fp:
+            cfg = json.load(fp)
+    
+    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {})
+    
+    ctx['site'] = cfg
     if baseurl:
         ctx['baseurl'] = baseurl
     if siteurl:
@@ -2260,9 +2272,16 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, pa
     )
 
     ctx['post'] = ctx['page']
+    ctx['paginator'] = dict(
+        previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
+        next_page_path     = paginator_next_page_path or page['frontmatter'].get('paginator__next_page_path') or '',
+        page               = paginator_page if paginator_page is not None and paginator_page >= 0 else int(page['frontmatter'].get('paginator__page', 0)),
+        previous_page      = paginator_previous_page if paginator_previous_page is not None and paginator_previous_page >= 0 else page['frontmatter'].get('paginator__previous_page'),
+        next_page          = paginator_next_page if paginator_next_page is not None and paginator_next_page >= 0 else page['frontmatter'].get('paginator__next_page'),
+    )
 
-    ctx['site']['posts'] = []
-    ctx['site']['pages'] = []
+    #ctx['site']['posts'] = []
+    #ctx['site']['pages'] = []
 
     snippet = lambda s, maxlen = 500: s[:500] + '...'
     format_string = lambda s: s # :markdownify, :strip_html, :normalize_whitespace, :escape_once,
@@ -2296,13 +2315,31 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, pa
     return ctx
     
 
-def render(output_path, input_path = '', context_path = '', sitemap_path = '', snippets_dir = '', layout = '', baseurl = '', siteurl = '', snippets_default = snippets_default, force_plain  = False):
+def render(
+    output_path, 
+    input_path = '', 
+    site_config_path = '', 
+    sitemap_path = '', 
+    snippets_dir = '', 
+    layout = '', 
+    baseurl = '', 
+    siteurl = '', 
+
+    paginator_previous_page_path = '',
+    paginator_next_page_path = '',
+    paginator_page = None,
+    paginator_previous_page = None,   
+    paginator_next_page = None,
+
+    snippets_default = snippets_default, 
+    force_plain = False
+):
     # https://jekyllrb.com/docs/configuration/options/
 
     assert output_path
 
     page = read_page(input_path, layout = layout, force_plain = bool(force_plain), extra = dict(output_path = output_path))
-    ctx = build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default)
+    ctx = build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default, paginator_previous_page_path = paginator_previous_page_path, paginator_next_page_path = paginator_next_page_path, paginator_page = paginator_page, paginator_next_page = paginator_next_page, paginator_previous_page = paginator_previous_page)
     rendered = render_page(page, ctx = ctx)
    
     if sitemap_path:
@@ -2320,13 +2357,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-path', '-i')
     parser.add_argument('--output-path', '-o')
-    parser.add_argument('--context-path', '-c')
+    parser.add_argument('--site-config-path', '-c')
     parser.add_argument('--sitemap-path')
     parser.add_argument('--force-plain', action = 'store_true')
     parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
     parser.add_argument('--snippets-dir')
     parser.add_argument('--baseurl', '-b')
     parser.add_argument('--siteurl')
+    parser.add_argument('--paginator-previous-page-path')
+    parser.add_argument('--paginator-next-page-path')
+    parser.add_argument('--paginator-page', type = int)
+    parser.add_argument('--paginator-previous-page', type = int)
+    parser.add_argument('--paginator-next-page', type = int)
     args = parser.parse_args()
     print(args)
     
