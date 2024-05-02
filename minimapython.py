@@ -2053,7 +2053,8 @@ def resolve_template_variables(res, ctx, sep = '__'):
                 ctx_flat[(prefix + sep) * bool(prefix) + k + sep + 'is_none'] = None
 
     for k, v in ctx_flat.items():
-        res = res.replace('<!--' + k + '\n', '').replace('\n' + k + '-->', '')
+        if v or v is None:
+            res = res.replace('<!--' + k + '\n', '').replace('\n' + k + '-->', '')
         if v is not None:
             res = res.replace('{{ ' + k + ' }}', v)
     
@@ -2257,8 +2258,6 @@ def build_context(context_path, sitemap_path, snippets_dir, baseurl, siteurl, pa
         previous = None,
         next = None
     )
-
-    breakpoint()
 
     ctx['post'] = ctx['page']
 
