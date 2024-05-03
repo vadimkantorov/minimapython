@@ -1,4 +1,7 @@
+#TODO: yaml_loads, improve parser _config.yml
+
 import os
+import re
 import json
 import html
 import argparse
@@ -2109,12 +2112,12 @@ def sitemap_write(path, sitemap):
         node_doc.writexml(fp, addindent = '  ', newl = '\n')
     return path
 
-def sitemap_update(sitemap, id = '', loc = '', locrel = '', translate = {ord('-') : '', ord('_') : ''}):
+def sitemap_update(sitemap, id = '', loc = '', translate = {ord('-') : '', ord('_') : ''}, **kwargs):
     sitemap = sitemap[:]
-    k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id')) and u.get('id').translate(translate) == id.translate(translate)) or (bool(u.get('locrel')) and u.get('locrel') == locrel) or (bool(u.get('loc')) and u.get('loc') == loc)] or [-1])[0]
+    k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id')) and u.get('id').translate(translate) == id.translate(translate)) or (bool(u.get('loc')) and u.get('loc') == loc)] or [-1])[0]
     if k == -1:
         sitemap.append({})
-    sitemap[k] = sitemap[k] | dict(id = id, loc = loc, locrel = locrel)
+    sitemap[k] = sitemap[k] | dict(id = id, loc = loc, **kwargs)
     return sitemap
 
 def absolute_url(v, ctx):
@@ -2220,35 +2223,29 @@ def build_context(
             cfg = json.load(fp)
     
     ctx = dict(site = {}, page = {}, post = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {}, pages = [], posts = [])
-    ctx['sitemap'] = sitemap_read(sitemap_path)
+    
     ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
     ctx['root'] = '/'
     
-    ctx['site'] = cfg
-    
-    #TODO: pop from cfg and frontmatter
     #TODO: detect date and title from filename/h1
-    #TODO: add slugify
     ctx['site'] = dict(
         time = now,
-        title = cfgget('title', ''),
-        lang = cfg.get('lang', 'en'),
-        description = cfg.get('description', '')
-        author = dict(
-            uri = ''
-        )
-        show_drafts = cfg.get('show_drafts') == 'true',
+        title = cfg.pop('title', ''),
+        lang = cfg.pop('lang', 'en'),
+        description = cfg.pop('description', ''),
+        show_drafts = cfg.pop('show_drafts', '') == 'true',
         feed = dict(
-            excerpt_only = cfg.get('feed', {}).get('excerpt_only') == 'true'
+            excerpt_only = cfg.pop('feed', {}).pop('excerpt_only', '') == 'true'
         ),
 
-        minima = cfg.get('minima', {}),
+        minima = cfg.pop('minima', {}),
 
         url = siteurl or cfg.get('url', '/'),
-        ctx = baseurl or cfg.get('baseurl', '/'),
-        header_pages = cfg['header_pages'] if 'header_pages' in cfg else [p['path'] for p in ctx['sitemap'] if p.get('post') != "true"]
-        pages = [p for p in ctx['sitemap'] if p.get('post') != "true"],
-        posts = [p for p in ctx['sitemap'] if p.get('post') != "true"],
+        baseurl = baseurl or cfg.get('baseurl', '/'),
+        
+        author = dict(
+            uri = ''
+        ),
         
         related_posts = [],
         static_files = [],
@@ -2260,37 +2257,56 @@ def build_context(
         categories = {},
         tags = {},
     )
+    cfg.pop('url', '')
+    cfg.pop('baseurl', '')
+    ctx['site'].update(cfg)
     
     ctx['page'] = dict(
-        lang          = page['frontmatter'].get('lang') or ctx['site'].get('lang'), 
-        title         = page['frontmatter'].get('title', ''),
-        list_title    = page['frontmatter'].get('list_title', '') or ctx['site'].get('list_title', ''),
-        description   = page['frontmatter'].get('description', ''),
+        lang          = page['frontmatter'].pop('lang', '') or ctx['site'].get('lang', ''), 
+        title         = page['frontmatter'].pop('title', ''),
+        list_title    = page['frontmatter'].pop('list_title', '') or ctx['site'].get('list_title', ''),
+        description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
-        permalink     = page['frontmatter'].get('permalink', ''),
-        draft         = page['frontmatter'].get('draft') == 'true',
-        published     = page['frontmatter'].get('published') != 'false',
+        permalink     = page['frontmatter'].pop('permalink', ''),
+        draft         = page['frontmatter'].pop('draft', '') == 'true',
+        published     = page['frontmatter'].pop('published', '') != 'false',
         content       = page['content'],
-        categories    = page['frontmatter']['categories'] if isinstance(page['frontmatter'].get('categories'), list) else (page['frontmatter'].get('categories', '').split() or ([page['frontmatter']['category']] if page['frontmatter'].get('category') else [])),
-        tags          = page['frontmatter']['tags'] if isinstance(page['frontmatter'].get('tags'), list) else (page['frontmatter'].get('tags', '').split() or ([page['frontmatter']['tag']] if page['frontmatter'].get('tag') else [])),
-        author       = page['frontmatter']['author'] if isinstance(page['frontmatter'].get('author'), list) else page['frontmatter']['author'] if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter']['author']] if page['frontmatter'].get('author') else ctx['site'].get('author', []),
-        collection    = page['frontmatter'].get('collection', ''),
-        date          = page['frontmatter'].get('date') or now,
-        modified_date = page['frontmatter'].get('modified_date', ''),
+        categories    = page['frontmatter'].pop('categories', []) if isinstance(page['frontmatter'].get('categories'), list) else (page['frontmatter'].pop('categories', '').split() or ([page['frontmatter'].pop('category', '')] if page['frontmatter'].get('category') else [])),
+        tags          = page['frontmatter'].pop('tags', []) if isinstance(page['frontmatter'].get('tags'), list) else (page['frontmatter'].pop('tags', '').split() or ([page['frontmatter'].pop('tag', '')] if page['frontmatter'].get('tag') else [])),
+        author       = page['frontmatter'].pop('author', []) if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter'].pop('author', '')] if page['frontmatter'].get('author') else ctx['site'].get('author', []),
+        collection    = page['frontmatter'].pop('collection', ''),
+        date          = page['frontmatter'].pop('date', '') or now,
+        modified_date = page['frontmatter'].pop('modified_date', ''),
         path          = page['path'],
         dir           = page['frontmatter'].get('permalink', ctx['site']['baseurl']),
         
-        excerpt       = page['frontmatter'].get('excerpt', '') or page['content'].strip().split('\n')[0],
-        url           = page['frontmatter'].get('url', '') or page['frontmatter'].get('permalink', '') or page['output_path'],
+        excerpt       = page['frontmatter'].pop('excerpt', '') or page['content'].strip().split('\n')[0],
+        url           = page['frontmatter'].pop('url', '') or page['frontmatter'].get('permalink', '') or page['output_path'],
         
-        id = page['frontmatter'].get('id') or page['path'],
+        id = page['frontmatter'].pop('id', '') or page['path'],
 
-        twitter = dict(card = page['frontmatter'].get('twitter__card') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
-        image = dict(path = page['frontmatter'].get('image'), height = "0", width = "0", alt = ""),
+        twitter = dict(card = page['frontmatter'].pop('twitter__card', '') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
+        image = dict(path = page['frontmatter'].pop('image', ''), height = '0', width = '0', alt = ''),
 
         previous = None,
-        next = None
+        next = None,
+        type = 'page'
     )
+    page['frontmatter'].pop('permalink', '')
+    ctx['page'].update(page['frontmatter'])
+        
+    ctx['sitemap'] = sitemap_read(sitemap_path)
+    ctx['sitemap'] = sitemap_update(ctx['sitemap'], 
+        id = str(abs(hash(os.path.basename(page['path'] or page.get('output_path', ''))))), 
+        loc = absolute_url(page['output_path'], ctx), 
+        pagepath = ctx['page']['path'],
+        pagetitle = ctx['page']['title'],
+        pageurl = ctx['page']['url'],
+        pagetype = ctx['page']['type']
+    )
+    ctx['site']['pages'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') != "post"]
+    ctx['site']['pages'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') == "post"]
+    ctx['site']['header_pages'] = cfg['header_pages'] if 'header_pages' in cfg else [p['path'] for p in ctx['site']['pages']]
 
     ctx['paginator'] = dict(
         previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
@@ -2358,8 +2374,7 @@ def render(
     rendered = render_page(page, ctx = ctx)
    
     if sitemap_path:
-        id, url = str(hash(os.path.basename(input_path or output_path or ''))), output_path
-        print(sitemap_write(sitemap_path, sitemap_update(ctx['sitemap'], id = id, loc = absolute_url(url, ctx), locrel = relative_url(url, ctx))))
+        print(sitemap_write(sitemap_path, ctx['sitemap']))
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
     with open(output_path, 'w') as fp:
@@ -2367,6 +2382,12 @@ def render(
     
     print(output_path)
 
+def slugify(s, space = '_', lower = True):
+    s = s.strip()
+    s = re.sub(r'\s', space, s, flags = re.U)
+    s = re.sub(r'[^-_\w]', space, s, flags = re.U)
+    s = s.lower() if lower else s
+    return s
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
