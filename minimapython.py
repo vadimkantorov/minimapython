@@ -2188,17 +2188,22 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
     is_markdown = input_path.endswith('.md')
     if is_markdown and force_plain is False:
         assert markdown is not None, 'ERROR: [markdown] python package must be installed or [--force-plain] must be used'
+
+    render_markdown = lambda content, ctx: markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
+    render_plain = lambda content, ctx: content
         
     renderer = render_markdown if (is_markdown and force_plain is False) else render_plain
     return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = '') | extra
 
-def render_markdown(content, ctx):
-    return markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
+def build_context(
+    site_config_path, 
+    sitemap_path, 
+    snippets_dir, 
+    baseurl, 
+    siteurl, 
 
-def render_plain(content, ctx):
-    return content
-
-def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page = {}, snippets_default = {},
+    page = {}, 
+    snippets_default = {},
 
     paginator_previous_page_path = '',
     paginator_next_page_path = '',
@@ -2206,42 +2211,58 @@ def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl
     paginator_previous_page = None,   
     paginator_next_page = None,
 ):
+    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
     # https://jekyllrb.com/docs/variables/
     cfg = {}
     if site_config_path and os.path.exists(site_config_path):
         with open(site_config_path) as fp:
             cfg = json.load(fp)
     
-    ctx = dict(site = {}, page = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {})
-    
-    ctx['site'] = cfg
-    if baseurl:
-        ctx['baseurl'] = baseurl
-    if siteurl:
-        ctx['site']['url'] = siteurl
-    
+    ctx = dict(site = {}, page = {}, post = {}, layout = {}, theme = {}, paginator = {}, seo_tag = {}, pages = [], posts = [])
     ctx['sitemap'] = sitemap_read(sitemap_path)
     ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
     ctx['root'] = '/'
     
-    #ctx['site'] = dict(
-    #    time = 
-    #    title = 
-    #    lang = 
-    #    description = 
-    #    author = dict(
-    #        uri = ''
-    #    )
-    #    show_drafts = 
-    #    feed = dict(
-    #        excerpt_only
-    #    )
-    #)
+    ctx['site'] = cfg
     
-    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    #TODO: pop from cfg and frontmatter
+    #TODO: detect date and title from filename/h1
+    #TODO: add slugify
+    ctx['site'] = dict(
+        time = now,
+        title = cfgget('title', ''),
+        lang = cfg.get('lang', 'en'),
+        description = cfg.get('description', '')
+        author = dict(
+            uri = ''
+        )
+        show_drafts = cfg.get('show_drafts') == 'true',
+        feed = dict(
+            excerpt_only = cfg.get('feed', {}).get('excerpt_only') == 'true'
+        ),
 
+        minima = cfg.get('minima', {}),
+
+        url = siteurl or cfg.get('url', '/'),
+        ctx = baseurl or cfg.get('baseurl', '/'),
+        header_pages = cfg['header_pages'] if 'header_pages' in cfg else [p['path'] for p in ctx['sitemap'] if p.get('post') != "true"]
+        pages = [p for p in ctx['sitemap'] if p.get('post') != "true"],
+        posts = [p for p in ctx['sitemap'] if p.get('post') != "true"],
+        
+        related_posts = [],
+        static_files = [],
+        html_pages = [],
+        html_files = [],
+        collections = [],
+        data = [],
+        documents = [],
+        categories = {},
+        tags = {},
+    )
+    
     ctx['page'] = dict(
-        lang          = page['frontmatter'].get('lang') or ctx['site'].get('lang') or 'en', 
+        lang          = page['frontmatter'].get('lang') or ctx['site'].get('lang'), 
         title         = page['frontmatter'].get('title', ''),
         list_title    = page['frontmatter'].get('list_title', '') or ctx['site'].get('list_title', ''),
         description   = page['frontmatter'].get('description', ''),
@@ -2271,7 +2292,6 @@ def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl
         next = None
     )
 
-    ctx['post'] = ctx['page']
     ctx['paginator'] = dict(
         previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
         next_page_path     = paginator_next_page_path or page['frontmatter'].get('paginator__next_page_path') or '',
@@ -2279,9 +2299,6 @@ def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl
         previous_page      = paginator_previous_page if paginator_previous_page is not None and paginator_previous_page >= 0 else page['frontmatter'].get('paginator__previous_page'),
         next_page          = paginator_next_page if paginator_next_page is not None and paginator_next_page >= 0 else page['frontmatter'].get('paginator__next_page'),
     )
-
-    #ctx['site']['posts'] = []
-    #ctx['site']['pages'] = []
 
     snippet = lambda s, maxlen = 500: s[:500] + '...'
     format_string = lambda s: s # :markdownify, :strip_html, :normalize_whitespace, :escape_once,
@@ -2294,14 +2311,12 @@ def build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl
     )
     ctx['seo_tag']['page_title'] = format_string(ctx['page'].get('title', '')) or ctx['seo_tag']['site_title']
     ctx['seo_tag']['title'] = ctx['seo_tag']['page_title']
-
     ctx['seo_tag']['author'] = ctx['page'].get('author') or (ctx['page'].get('authors')[0] if ctx['page'].get('authors', []) and len(ctx['page'].get('authors', [])) > 0 else ctx['site'].get('author')) or {}
     if isinstance(ctx['seo_tag']['author'], str) and ctx['site'].get('data', {}).get('authors', {}):
         ctx['seo_tag']['author'] = ctx['site'].get('data', {}).get('authors', {}).get(ctx['seo_tag']['author'], dict(name = ctx['seo_tag']['author']))
     if not isinstance(ctx['seo_tag']['author'], dict):
        ctx['seo_tag']['author'] = dict(name = ctx['seo_tag']['author'])
     ctx['seo_tag']['image'] = ctx['page'].get('image', {}) or ctx['site'].get('image', {}) # https://github.com/jekyll/jekyll-seo-tag/blob/master/lib/jekyll-seo-tag/image_drop.rb
-    
     ctx['seo_tag']['json_ld'] = {
         '@context' : 'https://schema.org',
         '@type' : ctx['page'].get('seo', {}).get('type', '') or ('WebSite' if ctx['page'].get('homepage_or_about') is True else 'BlogPosting' if ctx['page'].get('date') else 'WebPage'),
