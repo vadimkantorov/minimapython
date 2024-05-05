@@ -37,7 +37,10 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Install minimapython
-        run: curl -O https://raw.githubusercontent.com/vadimkantorov/minimapython/master/minimapython.py
+        run: |
+          python -m pip install --user markdown markdown-captions markdown-checklist pymdown-extensions mdx_truly_sane_lists
+          curl -O https://raw.githubusercontent.com/vadimkantorov/minimapython/master/minimapython.py
+
       - name: Build with minimapython
         # Outputs to the './_site' directory by default
         run: bash test.sh # bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
