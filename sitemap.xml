@@ -1,0 +1,10 @@
+<urlset>
+  <url pagepath="index.md">
+  </url>
+  
+  <url pagepath="about.md">
+  </url>
+
+  <url pagepath="_posts/2016-05-19-super-short-article.md" pagetype="post" pagetitle="pagetitle1" pageurl="/pageurl1">
+  </url>
+</urlset>
