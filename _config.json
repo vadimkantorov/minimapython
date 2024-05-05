@@ -1,0 +1,56 @@
+{
+    "title": "Your awesome title",
+    "description": "Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.",
+    "author": {
+        "name": "GitHub User",
+        "email": "your-email@domain.com"
+    },
+    
+    "minima" : {
+        "date_format": "%b %-d, %Y",
+        "social_links": {
+            "devto" : "https://dev.to/jekyll",
+            "dribbble" : "https://dribbble.com/jekyll",
+            "facebook" : "https://www.facebook.com/jekyll",
+            "flickr" : "https://www.flickr.com/photos/jekyll",
+            "github" : "https://github.com/jekyll/minima",
+            "google_scholar" : "https://scholar.google.com/citations?user=qc6CJjYAAAAJ",
+            "instagram" : "https://www.instagram.com/jekyll",
+            "keybase"  : "https://keybase.io/jekyll",
+            "linkedin" : "https://www.linkedin.com/in/jekyll",
+            "microdotblog" : "https://micro.blog/jekyll",
+            "pinterest" : "https://www.pinterest.com/jekyll",
+            "stackoverflow" : "https://stackoverflow.com/users/1234567/jekyll",
+            "telegram" : "https://t.me/jekyll",
+            "twitter" : "https://twitter.com/jekyllrb",
+            "youtube" : "https://www.youtube.com/jekyll",
+            "rss" : "https://jekyll.github.io/minima/feed.xml",
+
+            "gitlab" : "https://gitlab.com/jekyll/minima",
+            "mastodon" : "https://mastodon.social/jekyll",
+            "x" : "https://x.com/jekyllrb"
+        }
+    },
+    "show_excerpts": false,
+    "baseurl": "/minima",
+
+    "webmaster_verifications" : {
+        "google": "googleverif",
+        "bing" : "bingverif",
+        "alexa": "alexaverif",
+        "yandex": "yandexverif",
+        "baidu": "baiduverif",
+        "facebook": "facebookverif"
+    },
+    "facebook": {
+        "admins": "admins",
+        "publisher": "publisher",
+        "app_id": "app_id"
+    },
+    "twitter": {
+        "username": "username"
+    },
+    "feed": {"path": "feed.xml"},
+
+    "header_pages": ["index.md", "about.md"]
+}
