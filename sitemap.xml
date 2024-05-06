@@ -3,50 +3,50 @@
 
   <url>
      <pagepath>index.md</pagepath>
-     <pageurl>url1</pageurl> 
-     <pagetitle>title1</pagetitle>
+     <pageurl>index.html</pageurl> 
+     <pagetitle>index</pagetitle>
      <pagetype>page</pagetype>
   </url>
 
   <url>
      <pagepath>about.md</pagepath>
-     <pageurl>url2</pageurl> 
-     <pagetitle>title2</pagetitle>
+     <pageurl>about.html</pageurl> 
+     <pagetitle>about</pagetitle>
      <pagetype>page</pagetype>
   </url>
 
   <url>
      <pagepath>_posts/2016-05-19-super-short-article.md</pagepath>
-     <pageurl>url3</pageurl> 
-     <pagetitle>title3</pagetitle>
+     <pageurl>blog/2016-05-19-super-short-article.html</pageurl> 
+     <pagetitle>super-short-article</pagetitle>
      <pagetype>post</pagetype>
   </url>
 
   <url>
      <pagepath>_posts/2016-05-20-my-example-post.md</pagepath>
-     <pageurl>url4</pageurl> 
-     <pagetitle>title4</pagetitle>
+     <pageurl>blog/2016-05-20-my-example-post.html</pageurl> 
+     <pagetitle>my-example-post</pagetitle>
      <pagetype>post</pagetype>
   </url>
 
   <url>
      <pagepath>_posts/2016-05-20-super-long-article.md</pagepath>
-     <pageurl>url5</pageurl> 
-     <pagetitle>title5</pagetitle>
+     <pageurl>blog/2016-05-20-super-long-article.html</pageurl> 
+     <pagetitle>super-long-article</pagetitle>
      <pagetype>post</pagetype>
   </url>
 
   <url>
      <pagepath>_posts/2016-05-20-this-post-demonstrates-post-content-styles.md</pagepath>
-     <pageurl>url6</pageurl> 
-     <pagetitle>title6</pagetitle>
+     <pageurl>blog/2016-05-20-this-post-demonstrates-post-content-styles.html</pageurl> 
+     <pagetitle>this-post-demonstrates-post-content-styles</pagetitle>
      <pagetype>post</pagetype>
   </url>
 
   <url>
      <pagepath>_posts/2016-05-20-welcome-to-jekyll.md</pagepath>
-     <pageurl>url7</pageurl> 
-     <pagetitle>title7</pagetitle>
+     <pageurl>blog/2016-05-20-welcome-to-jekyll.html</pageurl> 
+     <pagetitle>welcome-to-jekyll</pagetitle>
      <pagetype>post</pagetype>
   </url>
   
