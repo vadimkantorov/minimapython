@@ -43,7 +43,10 @@ jobs:
 
       - name: Build with minimapython
         # Outputs to the './_site' directory by default
-        run: bash test.sh # bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        run: |
+          mkdir -p ./_site
+          bash test.sh # bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+          cp sitemap.xml ./_site
         
       - name: Upload artifact
         # Automatically uploads an artifact from the './_site' directory by default
