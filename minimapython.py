@@ -31,6 +31,9 @@ site__show_excerpts-->
 
 page_author_html = '''
 <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span class="p-author h-card" itemprop="name">{{ author }}</span></span>
+<!--forloop__last__is_none
+,
+forloop__last__is_none-->
 '''
 
 site_header_pages_html = '''
@@ -2018,7 +2021,7 @@ def render_page(page, ctx, num_snippets_renders = 5):
     ctx = ctx.copy() | snippets
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = p.get('date', ''), post__url = p.get('url', ''), post__title = p.get('title', ''), post__excerpt  = p.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
     
-    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', ''))) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if ctx['page'].get('path') == path)
+    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', '') )) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
     
     if ctx.get('page', {}).get('date') is None:
         ctx['page__date'] = None
@@ -2028,8 +2031,8 @@ def render_page(page, ctx, num_snippets_renders = 5):
         ctx['paginator__previous_page'] = None
     if ctx.get('paginator', {}).get('next_page') is None:
         ctx['paginator__next_page'] = None
-    if page_author := ctx.get('page', {}).get('author', ''):
-        ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = author)) for author in (page_author if isinstance(page_author, list) else [page_author]))
+    if page_author := ctx.get('page', {}).get('author', []):
+        ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(page_author) - 1 else True)) for i, a in enumerate(page_author))
 
     res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets.get(page['layout'] + '_html', '')))
     for k in range(num_snippets_renders):
@@ -2247,9 +2250,9 @@ def build_context(
         url = siteurl or cfg.get('url', '/'),
         baseurl = baseurl or cfg.get('baseurl', '/'),
         
-        author = dict(
-            uri = ''
-        ),
+        #author = dict(
+        #    uri = ''
+        #),
         
         related_posts = [],
         static_files = [],
