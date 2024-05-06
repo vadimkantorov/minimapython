@@ -2296,17 +2296,20 @@ def build_context(
     ctx['page'].update(page['frontmatter'])
         
     ctx['sitemap'] = sitemap_read(sitemap_path)
-    ctx['sitemap'] = sitemap_update(ctx['sitemap'], 
-        id = str(abs(hash(os.path.basename(page['path'] or page.get('output_path', ''))))), 
-        loc = absolute_url(page['output_path'], ctx), 
-        pagepath = ctx['page']['path'],
-        pagetitle = ctx['page']['title'],
-        pageurl = ctx['page']['url'],
-        pagetype = ctx['page']['type']
-    )
+    #ctx['sitemap'] = sitemap_update(ctx['sitemap'], 
+    #    id = str(abs(hash(os.path.basename(page['path'] or page.get('output_path', ''))))), 
+    #    loc = absolute_url(page['output_path'], ctx), 
+    #    pagepath = ctx['page']['path'],
+    #    pagetitle = ctx['page']['title'],
+    #    pageurl = ctx['page']['url'],
+    #    pagetype = ctx['page']['type']
+    #)
+    # TODO: optionally use pages/posts from cfg
+    
     ctx['site']['pages'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') != "post"]
-    ctx['site']['pages'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') == "post"]
-    ctx['site']['header_pages'] = cfg['header_pages'] if 'header_pages' in cfg else [p['path'] for p in ctx['site']['pages']]
+    ctx['site']['posts'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') == "post"]
+    
+    ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
     ctx['paginator'] = dict(
         previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
@@ -2373,8 +2376,8 @@ def render(
     ctx = build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default, paginator_previous_page_path = paginator_previous_page_path, paginator_next_page_path = paginator_next_page_path, paginator_page = paginator_page, paginator_next_page = paginator_next_page, paginator_previous_page = paginator_previous_page)
     rendered = render_page(page, ctx = ctx)
    
-    if sitemap_path:
-        print(sitemap_write(sitemap_path, ctx['sitemap']))
+    #if sitemap_path:
+    #    print(sitemap_write(sitemap_path, ctx['sitemap']))
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
     with open(output_path, 'w') as fp:
