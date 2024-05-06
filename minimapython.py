@@ -57,6 +57,10 @@ page__list_title-->
 post_list_html-->
     </ul>
 
+<!--site__paginate__is_none
+      <style>.pager {display: none}</style>
+site__paginate__is_none-->
+
       <div class="pager">
         <ul class="pagination">
 <!--paginator__previous_page
@@ -2233,10 +2237,12 @@ def build_context(
         title = cfg.pop('title', ''),
         lang = cfg.pop('lang', 'en'),
         description = cfg.pop('description', ''),
-        show_drafts = cfg.pop('show_drafts', '') == 'true',
+        show_drafts = cfg.pop('show_drafts', False) is True,
         feed = dict(
-            excerpt_only = cfg.pop('feed', {}).pop('excerpt_only', '') == 'true'
+            excerpt_only = cfg.pop('feed', {}).pop('excerpt_only', False) is True
         ),
+
+        paginate = True if cfg.pop('paginate', False) is True else None,
 
         minima = cfg.pop('minima', {}),
 
