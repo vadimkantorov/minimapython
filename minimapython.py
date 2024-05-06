@@ -1,5 +1,3 @@
-#TODO: yaml_loads, improve parser _config.yml
-
 import os
 import re
 import json

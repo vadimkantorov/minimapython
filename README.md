@@ -1,4 +1,4 @@
-Adapted [minima theme](https://github.com/jekyll/minima) for generating HTML pages with a single-file Python script. This script includes the required CSS and HTML templates. You can modify the templates inline or extract them to a directory and modify the extracted template files.
+Adapted [minima theme](https://github.com/jekyll/minima) for generating HTML pages with a single-file Python script. This script includes the required CSS and HTML templates (compiled [minima theme](https://github.com/jekyll/minima)'s CSS is taken from https://github.com/vadimkantorov/minimacss). You can modify the templates inline or extract them to a directory and modify the extracted template files.
 
 # Usage
 ```shell
