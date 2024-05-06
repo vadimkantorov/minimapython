@@ -2021,21 +2021,11 @@ def render_page(page, ctx, num_snippets_renders = 5):
     snippets = ctx['snippets']
 
     ctx = ctx.copy() | snippets
+    
     ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = p.get('date', ''), post__url = p.get('url', ''), post__title = p.get('title', ''), post__excerpt  = p.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
-    
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', '') )) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
+    ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(ctx.get('page', {}).get('author', [])) - 1 else True)) for i, a in enumerate( ctx.get('page', {}).get('author', []) )) if ctx.get('page', {}).get('author', []) else None
     
-    if ctx.get('page', {}).get('date') is None:
-        ctx['page__date'] = None
-    if ctx.get('seo_tag', {}).get('image') is None:
-        ctx['seo_tag__image'] = None
-    if ctx.get('paginator', {}).get('previous_page') is None:
-        ctx['paginator__previous_page'] = None
-    if ctx.get('paginator', {}).get('next_page') is None:
-        ctx['paginator__next_page'] = None
-    if page_author := ctx.get('page', {}).get('author', []):
-        ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(page_author) - 1 else True)) for i, a in enumerate(page_author))
-
     res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets.get(page['layout'] + '_html', '')))
     for k in range(num_snippets_renders):
         res = resolve_template_variables(res, ctx)
