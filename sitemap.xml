@@ -1,10 +1,53 @@
-<urlset>
-  <url pagepath="index.md">
-  </url>
-  
-  <url pagepath="about.md">
+<?xml version="1.0" ?>
+<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+     <pagepath>index.md</pagepath>
+     <pageurl>url1</pageurl> 
+     <pagetitle>title1</pagetitle>
+     <pagetype>page</pagetype>
   </url>
 
-  <url pagepath="_posts/2016-05-19-super-short-article.md" pagetype="post" pagetitle="pagetitle1" pageurl="/pageurl1">
+  <url>
+     <pagepath>about.md</pagepath>
+     <pageurl>url2</pageurl> 
+     <pagetitle>title2</pagetitle>
+     <pagetype>page</pagetype>
   </url>
+
+  <url>
+     <pagepath>_posts/2016-05-19-super-short-article.md</pagepath>
+     <pageurl>url3</pageurl> 
+     <pagetitle>title3</pagetitle>
+     <pagetype>post</pagetype>
+  </url>
+
+  <url>
+     <pagepath>_posts/2016-05-20-my-example-post.md</pagepath>
+     <pageurl>url4</pageurl> 
+     <pagetitle>title4</pagetitle>
+     <pagetype>post</pagetype>
+  </url>
+
+  <url>
+     <pagepath>_posts/2016-05-20-super-long-article.md</pagepath>
+     <pageurl>url5</pageurl> 
+     <pagetitle>title5</pagetitle>
+     <pagetype>post</pagetype>
+  </url>
+
+  <url>
+     <pagepath>_posts/2016-05-20-this-post-demonstrates-post-content-styles.md</pagepath>
+     <pageurl>url6</pageurl> 
+     <pagetitle>title6</pagetitle>
+     <pagetype>post</pagetype>
+  </url>
+
+  <url>
+     <pagepath>_posts/2016-05-20-welcome-to-jekyll.md</pagepath>
+     <pageurl>url7</pageurl> 
+     <pagetitle>title7</pagetitle>
+     <pagetype>post</pagetype>
+  </url>
+  
 </urlset>
