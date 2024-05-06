@@ -1,5 +1,5 @@
 mkdir -p _site
-
+# commit
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i index.md                                 -o ./_site/index.html --baseurl /blog --siteurl http://localhost:8000
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i about.md                                 -o ./_site/about.html
 
