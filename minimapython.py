@@ -1,3 +1,5 @@
+#TODO: date_to_xmlschema, date_format
+
 import os
 import re
 import json
@@ -2218,8 +2220,10 @@ def build_context(
     paginator_page = None,
     paginator_previous_page = None,   
     paginator_next_page = None,
+
+    strftime = '%Y-%m-%d %H:%M:%S'
 ):
-    now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.datetime.now().strftime(strftime)
 
     # https://jekyllrb.com/docs/variables/
     cfg = {}
