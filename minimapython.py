@@ -2262,7 +2262,7 @@ def build_context(
     ctx['page'] = dict(
         layout        = page['frontmatter'].pop('layout', 'default'),
         lang          = page['frontmatter'].pop('lang', ctx['site'].get('lang', '')), 
-        title         = page['frontmatter'].pop('title', ctx['site']['title']),
+        title         = page['frontmatter'].pop('title', ''),
         list_title    = page['frontmatter'].pop('list_title', ctx['site'].get('list_title', '')),
         description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
