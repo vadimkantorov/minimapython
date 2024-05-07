@@ -2301,12 +2301,13 @@ def build_context(
         'href': ctx['page']['url'],
         'class': ctx['page']['layout'],
         'loc': absolute_url(page['output_path'], ctx),
+        'lastmod' : ctx['page']['date'],
     })
     
     # TODO: optionally use pages/posts from cfg
     
-    ctx['site']['pages'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
-    ctx['site']['posts'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
+    ctx['site']['pages'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
+    ctx['site']['posts'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
     
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
