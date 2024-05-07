@@ -2089,32 +2089,31 @@ def sitemap_read(path):
         return []
     node_doc = xml.dom.minidom.parseString(xmlstr)
     assert node_doc.documentElement.nodeName == 'urlset'
-    return [dict({n.nodeName : ''.join(nn.nodeValue for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE) for n in node_url.childNodes if n.nodeType == n.ELEMENT_NODE}, id = node_url.getAttribute('id')) for node_url in node_doc.documentElement.getElementsByTagName('url')]
+    return [{'id': node_url.getAttribute('id'), 'class': node_url.getAttribute('class'), 'href': node_url.getAttribute('href'), 'loc' : ''.join(nn.nodeValue for n in node_url.getElementsByTagName('loc') if n.nodeType == n.ELEMENT_NODE for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE), 'title' : ''.join(nn.nodeValue for n in node_url.getElementsByTagName('title') if n.nodeType == n.ELEMENT_NODE for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE)} for node_url in node_doc.documentElement.getElementsByTagName('url')]
     
 def sitemap_write(path, sitemap):
     # https://sitemaps.org/protocol.html
     node_doc = xml.dom.minidom.Document()
     node_root = node_doc.appendChild(node_doc.createElement('urlset'))
-    node_root.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
-    node_root.setAttribute('xsi:schemaLocation', 'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd')
-    node_root.setAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
     for entry in sitemap:
         entry = entry.copy()
         node_url = node_root.appendChild(node_doc.createElement('url'))
-        if entry.get('id'):
-            node_url.setAttribute('id', entry.pop('id'))
+        for field in set(['class', 'id', 'href']) & entry.keys():
+            if entry[field]:
+                node_url.setAttribute(field, entry.pop(field))
         for field, value in entry.items():
-            node_url.appendChild(node_doc.createElement(field)).appendChild(node_doc.createTextNode(str(value)))
+            if entry[field]:
+                node_url.appendChild(node_doc.createElement(field)).appendChild(node_doc.createTextNode(str(value)))
     with open(path, 'w') as fp:
-        node_doc.writexml(fp, addindent = '  ', newl = '\n')
+        node_doc.writexml(fp, addindent = '  ', newl = '\n', encoding = 'utf-8')
     return path
 
-def sitemap_update(sitemap, id = '', loc = '', translate = {ord('-') : '', ord('_') : ''}, **kwargs):
+def sitemap_update(sitemap, kwargs, translate = {ord('-') : '', ord('_') : ''}):
     sitemap = sitemap[:]
-    k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id')) and u.get('id').translate(translate) == id.translate(translate)) or (bool(u.get('loc')) and u.get('loc') == loc)] or [-1])[0]
+    k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id') and kwargs.get('id')) and u['id'].translate(translate) == kwargs['id'].translate(translate)) or (bool(u.get('loc') and kwargs.get('loc')) and u['loc'] == kwargs['loc']) ] or [-1])[0]
     if k == -1:
         sitemap.append({})
-    sitemap[k] = sitemap[k] | dict(id = id, loc = loc, **kwargs)
+    sitemap[k] = sitemap[k] | kwargs
     return sitemap
 
 def absolute_url(v, ctx):
@@ -2244,9 +2243,7 @@ def build_context(
         url = siteurl or cfg.get('url', '/'),
         baseurl = baseurl or cfg.get('baseurl', '/'),
         
-        #author = dict(
-        #    uri = ''
-        #),
+        author = dict(name = '', email = '') | dict(cfg.pop('author', {})),
         
         related_posts = [],
         static_files = [],
@@ -2263,9 +2260,10 @@ def build_context(
     ctx['site'].update(cfg)
     
     ctx['page'] = dict(
-        lang          = page['frontmatter'].pop('lang', '') or ctx['site'].get('lang', ''), 
-        title         = page['frontmatter'].pop('title', ''),
-        list_title    = page['frontmatter'].pop('list_title', '') or ctx['site'].get('list_title', ''),
+        layout        = page['frontmatter'].pop('layout', 'default'),
+        lang          = page['frontmatter'].pop('lang', ctx['site'].get('lang', '')), 
+        title         = page['frontmatter'].pop('title', ctx['site']['title']),
+        list_title    = page['frontmatter'].pop('list_title', ctx['site'].get('list_title', '')),
         description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
         permalink     = page['frontmatter'].pop('permalink', ''),
@@ -2274,9 +2272,9 @@ def build_context(
         content       = page['content'],
         categories    = page['frontmatter'].pop('categories', []) if isinstance(page['frontmatter'].get('categories'), list) else (page['frontmatter'].pop('categories', '').split() or ([page['frontmatter'].pop('category', '')] if page['frontmatter'].get('category') else [])),
         tags          = page['frontmatter'].pop('tags', []) if isinstance(page['frontmatter'].get('tags'), list) else (page['frontmatter'].pop('tags', '').split() or ([page['frontmatter'].pop('tag', '')] if page['frontmatter'].get('tag') else [])),
-        author       = page['frontmatter'].pop('author', []) if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter'].pop('author', '')] if page['frontmatter'].get('author') else ctx['site'].get('author', []),
+        author       = page['frontmatter'].pop('author', []) if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter'].pop('author', '')] if page['frontmatter'].get('author') else [ctx['site'].get('author', {})['name']],
         collection    = page['frontmatter'].pop('collection', ''),
-        date          = page['frontmatter'].pop('date', '') or now,
+        date          = page['frontmatter'].pop('date', now),
         modified_date = page['frontmatter'].pop('modified_date', ''),
         path          = page['path'],
         dir           = page['frontmatter'].get('permalink', ctx['site']['baseurl']),
@@ -2297,18 +2295,18 @@ def build_context(
     ctx['page'].update(page['frontmatter'])
         
     ctx['sitemap'] = sitemap_read(sitemap_path)
-    #ctx['sitemap'] = sitemap_update(ctx['sitemap'], 
-    #    id = str(abs(hash(os.path.basename(page['path'] or page.get('output_path', ''))))), 
-    #    loc = absolute_url(page['output_path'], ctx), 
-    #    pagepath = ctx['page']['path'],
-    #    pagetitle = ctx['page']['title'],
-    #    pageurl = ctx['page']['url'],
-    #    pagetype = ctx['page']['type']
-    #)
+    ctx['sitemap'] = sitemap_update(ctx['sitemap'], {
+        'id': ctx['page']['path'], 
+        'title': ctx['page']['title'],
+        'href': ctx['page']['url'],
+        'class': ctx['page']['layout'],
+        'loc': absolute_url(page['output_path'], ctx),
+    })
+    
     # TODO: optionally use pages/posts from cfg
     
-    ctx['site']['pages'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') != "post"]
-    ctx['site']['posts'] = [dict(path = p.get('pagepath', ''), title = p.get('pagetitle', ''), url = p.get('pageurl', '')) for p in ctx['sitemap'] if p.get('pagetype') == "post"]
+    ctx['site']['pages'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
+    ctx['site']['posts'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
     
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
@@ -2377,8 +2375,8 @@ def render(
     ctx = build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default, paginator_previous_page_path = paginator_previous_page_path, paginator_next_page_path = paginator_next_page_path, paginator_page = paginator_page, paginator_next_page = paginator_next_page, paginator_previous_page = paginator_previous_page)
     rendered = render_page(page, ctx = ctx)
    
-    #if sitemap_path:
-    #    print(sitemap_write(sitemap_path, ctx['sitemap']))
+    if sitemap_path:
+        print(sitemap_write(sitemap_path + '._.xml', ctx['sitemap']))
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
     with open(output_path, 'w') as fp:
