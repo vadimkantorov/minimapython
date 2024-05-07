@@ -1,53 +1,32 @@
 <?xml version="1.0" ?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
-  <url>
-     <pagepath>index.md</pagepath>
-     <pageurl>index.html</pageurl> 
-     <pagetitle>index</pagetitle>
-     <pagetype>page</pagetype>
+  <url class="page" id="index.md" href="index.html">
+     <title>index</title>
   </url>
 
-  <url>
-     <pagepath>about.md</pagepath>
-     <pageurl>about.html</pageurl> 
-     <pagetitle>about</pagetitle>
-     <pagetype>page</pagetype>
+  <url class="page" id="about.md" href="about.html">
+     <title>about</title>
   </url>
 
-  <url>
-     <pagepath>_posts/2016-05-19-super-short-article.md</pagepath>
-     <pageurl>blog/2016-05-19-super-short-article.html</pageurl> 
-     <pagetitle>super-short-article</pagetitle>
-     <pagetype>post</pagetype>
+  <url class="post" id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html">
+     <title>super-short-article</title>
   </url>
 
-  <url>
-     <pagepath>_posts/2016-05-20-my-example-post.md</pagepath>
-     <pageurl>blog/2016-05-20-my-example-post.html</pageurl> 
-     <pagetitle>my-example-post</pagetitle>
-     <pagetype>post</pagetype>
+  <url class="post" id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html">
+     <title>my-example-post</title>
   </url>
 
-  <url>
-     <pagepath>_posts/2016-05-20-super-long-article.md</pagepath>
-     <pageurl>blog/2016-05-20-super-long-article.html</pageurl> 
-     <pagetitle>super-long-article</pagetitle>
-     <pagetype>post</pagetype>
+  <url class="post" id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html">
+     <title>super-long-article</title>
   </url>
 
-  <url>
-     <pagepath>_posts/2016-05-20-this-post-demonstrates-post-content-styles.md</pagepath>
-     <pageurl>blog/2016-05-20-this-post-demonstrates-post-content-styles.html</pageurl> 
-     <pagetitle>this-post-demonstrates-post-content-styles</pagetitle>
-     <pagetype>post</pagetype>
+  <url class="post" id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html">
+     <title>this-post-demonstrates-post-content-styles</title>
   </url>
 
-  <url>
-     <pagepath>_posts/2016-05-20-welcome-to-jekyll.md</pagepath>
-     <pageurl>blog/2016-05-20-welcome-to-jekyll.html</pageurl> 
-     <pagetitle>welcome-to-jekyll</pagetitle>
-     <pagetype>post</pagetype>
+  <url class="post" id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html">
+     <title>welcome-to-jekyll</title>
   </url>
   
 </urlset>
