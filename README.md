@@ -1,3 +1,12 @@
+### Generate full site from `sitemap.xml`
+
+```shell
+python minimapython.py -c _config.json --sitemap-path sitemap.xml -o ./_site --baseurl "${{ steps.pages.outputs.base_path }}"
+```
+
+### Generate full site page-by-page
+```shell
+mkdir -p ./_site
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i index.md                                 -o _site/index.html 
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i about.md                                 -o _site/about.html
 
@@ -6,3 +15,5 @@ python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016-05-20-super-long-article.md  -o _site/blog/2016-05-20-super-long-article.html
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016-05-20-this-post-demonstrates-poscontent-styles.md -o ./_site/blog/2016-05-20-this-post-demonstrates-post-content-styles.html
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016-05-20-welcome-to-jekyll.md   -o _site/blog/2016-05-20-welcome-to-jekyll.html
+cp sitemap.xml ./_site
+```
