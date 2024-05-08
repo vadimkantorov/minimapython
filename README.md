@@ -1,3 +1,5 @@
+Deployed to https://vadimkantorov.github.io/minimapython/
+
 Contents of [`_posts`](./_posts), [`index.md`](./index.md), [`about.md`](./about.md), [`_config.json`](./_config.json) taken from the original demo of [jekyll/minima@demo-site](https://github.com/jekyll/minima/tree/demo-site).
 
 ### Generate full site from `sitemap.xml`
