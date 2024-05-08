@@ -1,37 +1,31 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <urlset>
-
-  <url class="page" id="index.md" href="index.html">
-     <title>index</title>
+  <url class="home" id="index.md" href="_site/index.html">
+    <loc>/minimapython/_site/index.html</loc>
+    <title>index</title>
+    <lastmod>2024-05-08 20:53:49</lastmod>
   </url>
-
   <url class="page" id="about.md" href="about.html">
-     <title>about</title>
+    <title>about</title>
   </url>
-
   <url class="post" id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html">
-     <title>super-short-article</title>
-     <lastmod>2016-05-19</lastmod>
+    <title>super-short-article</title>
+    <lastmod>2016-05-19</lastmod>
   </url>
-
   <url class="post" id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html">
-     <title>my-example-post</title>
-     <lastmod>2016-05-20</lastmod>
+    <title>my-example-post</title>
+    <lastmod>2016-05-20</lastmod>
   </url>
-
   <url class="post" id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html">
-     <title>super-long-article</title>
-     <lastmod>2016-05-20</lastmod>
+    <title>super-long-article</title>
+    <lastmod>2016-05-20</lastmod>
   </url>
-
   <url class="post" id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html">
-     <title>this-post-demonstrates-post-content-styles</title>
-     <lastmod>2016-05-20</lastmod>
+    <title>this-post-demonstrates-post-content-styles</title>
+    <lastmod>2016-05-20</lastmod>
   </url>
-
   <url class="post" id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html">
-     <title>welcome-to-jekyll</title>
-     <lastmod>2016-05-20</lastmod>
+    <title>welcome-to-jekyll</title>
+    <lastmod>2016-05-20</lastmod>
   </url>
-  
 </urlset>

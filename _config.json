@@ -32,7 +32,7 @@
         }
     },
     "show_excerpts": false,
-    "baseurl": "/minima",
+    "baseurl": "/minimapython",
 
     "webmaster_verifications" : {
         "google": "googleverif",
