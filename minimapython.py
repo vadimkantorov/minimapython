@@ -2022,7 +2022,7 @@ def render_page(page, ctx, num_snippets_renders = 5):
 
     ctx = ctx.copy() | snippets
     
-    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post = dict(date = p.get('date', ''), url = p.get('url', ''), title = p.get('title') or os.path.basename(p.get('url', '')), excerpt  = p.get('excerpt', '')), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
+    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post = dict(date = p.get('date', ''), url = p.get('url', ''), title = p.get('title', ''), excerpt  = p.get('excerpt', '')), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page = dict(url = p.get('url', ''), title = p.get('title') or os.path.basename(p.get('url', '')) ))) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
     ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(ctx.get('page', {}).get('author', [])) - 1 else True)) for i, a in enumerate( ctx.get('page', {}).get('author', []) )) if ctx.get('page', {}).get('author', []) else None
     
@@ -2165,6 +2165,21 @@ def yaml_loads(content):
             res[keyprev].append(list_val)
     return res
 
+def get_page_date(page_path, date_template = '0000-00-00'):
+    page_name = os.path.basename(page_path)
+    if len(page_name) >= len(date_template) and page_name[:4].isdigit() and page_name[5:7].isdigit() and page_name[8:10].isdigit() and page_name[4] == page_name[7] == '-':
+        return page_name[:len(date_template)]
+    return ''
+
+def get_page_title(page_path = '', content = None):
+    if content is None:
+        content = open(page_path).read()
+
+    lines = content.strip().splitlines()
+    if lines:
+        return lines[0].removeprefix('### ').removeprefix('## ').removeprefix('# ').strip()
+    return ''
+
 def read_page(input_path, layout = '', force_plain = False, front_matter_header = '---', extra = {}):
     content = ''
     if input_path and os.path.exists(input_path):
@@ -2193,7 +2208,10 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
     render_plain = lambda content, ctx: content
         
     renderer = render_markdown if (is_markdown and force_plain is False) else render_plain
-    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = '') | extra
+    title = frontmatter.pop('title', '') or get_page_title(content = content)
+    date = frontmatter.pop('date', '') or get_page_date(input_path)
+    slug = os.path.splitext(os.path.basename(frontmatter.get('output_path', '')))[0] or os.path.splitext(os.path.basename(input_path))[0] or '' 
+    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = slug, title = title, date = date) | extra
 
 def build_context(
     site_config_path, 
@@ -2263,7 +2281,7 @@ def build_context(
     ctx['page'] = dict(
         layout        = page['frontmatter'].pop('layout', 'default'),
         lang          = page['frontmatter'].pop('lang', ctx['site'].get('lang', '')), 
-        title         = page['frontmatter'].pop('title', ''),
+        title         = page['title'],
         list_title    = page['frontmatter'].pop('list_title', ctx['site'].get('list_title', '')),
         description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
@@ -2271,11 +2289,12 @@ def build_context(
         draft         = page['frontmatter'].pop('draft', '') == 'true',
         published     = page['frontmatter'].pop('published', '') != 'false',
         content       = page['content'],
+        slug          = page['slug'],
         categories    = page['frontmatter'].pop('categories', []) if isinstance(page['frontmatter'].get('categories'), list) else (page['frontmatter'].pop('categories', '').split() or ([page['frontmatter'].pop('category', '')] if page['frontmatter'].get('category') else [])),
         tags          = page['frontmatter'].pop('tags', []) if isinstance(page['frontmatter'].get('tags'), list) else (page['frontmatter'].pop('tags', '').split() or ([page['frontmatter'].pop('tag', '')] if page['frontmatter'].get('tag') else [])),
         author       = page['frontmatter'].pop('author', []) if isinstance(page['frontmatter'].get('author'), list) else [page['frontmatter'].pop('author', '')] if page['frontmatter'].get('author') else [ctx['site'].get('author', {})['name']],
         collection    = page['frontmatter'].pop('collection', ''),
-        date          = page['frontmatter'].pop('date', now),
+        date          = page['date'] or now,
         modified_date = page['frontmatter'].pop('modified_date', ''),
         path          = page['path'],
         dir           = page['frontmatter'].get('permalink', ctx['site']['baseurl']),
@@ -2306,8 +2325,9 @@ def build_context(
         'summary' : ctx['page']['excerpt'],
     })
     
-    ctx['site']['pages'] = cfg_pages or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
-    ctx['site']['posts'] = cfg_posts or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
+    pages_and_posts = [dict(path = p.get('id', ''), title = p.get('title', '') or get_page_title(p.get('id', '')), url = p.get('href', ''), date = p.get('lastmod', get_page_date(p.get('id', ''))), excerpt = p.get('summary', ''), layout = p.get('class', '')) for p in ctx['sitemap']]
+    ctx['site']['pages'] = cfg_pages or [p for p in pages_and_posts if p['layout'] != 'post']
+    ctx['site']['posts'] = cfg_posts or [p for p in pages_and_posts if p['layout'] == 'post']
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
     ctx['paginator'] = dict(
