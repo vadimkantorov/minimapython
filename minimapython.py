@@ -2399,7 +2399,10 @@ def render(
     if sitemap_path and not sitemap_dry:
         print(sitemap_write(sitemap_path, ctx['sitemap']))
 
-    os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
+    dirname = os.path.dirname(output_path) or '.'
+    os.makedirs(dirname, exist_ok = True)
+    print(dirname)
+
     with open(output_path, 'w') as fp:
         fp.write(rendered)
     
@@ -2439,9 +2442,9 @@ if __name__ == '__main__':
         sitemap = sitemap_read(args.sitemap_path)
         sitemap_path = os.path.join(args.output_path, 'sitemap.xml')
         
-        print(os.path.dirname(args.output_path) or '.')
-        print(sitemap_path)
-        os.makedirs(os.path.dirname(args.output_path) or '.', exist_ok = True)
+        os.makedirs(args.output_path, exist_ok = True)
+        print(args.output_path)
+
         if not args.sitemap_dry:
             print(sitemap_write(sitemap_path, sitemap))
         for u in sitemap:
