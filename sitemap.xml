@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <urlset>
-  <url id="index.md" href="_site/index.html" class="home">
-    <loc>https://vadimkantorov.github.io/minimapython/_site/index.html</loc>
+  <url id="index.md" href="index.html" class="home">
     <title>index</title>
-    <lastmod>2024-05-08 23:43:35</lastmod>
   </url>
   <url id="about.md" href="about.html" class="page">
     <title>about</title>
