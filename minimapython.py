@@ -2439,6 +2439,8 @@ if __name__ == '__main__':
         sitemap = sitemap_read(args.sitemap_path)
         sitemap_path = os.path.join(args.output_path, 'sitemap.xml')
         
+        print(os.path.dirname(args.output_path) or '.')
+        print(sitemap_path)
         os.makedirs(os.path.dirname(args.output_path) or '.', exist_ok = True)
         if not args.sitemap_dry:
             print(sitemap_write(sitemap_path, sitemap))
