@@ -2022,7 +2022,7 @@ def render_page(page, ctx, num_snippets_renders = 5):
 
     ctx = ctx.copy() | snippets
     
-    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post__date = p.get('date', ''), post__url = p.get('url', ''), post__title = p.get('title', ''), post__excerpt  = p.get('excerpt', ''), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
+    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post = dict(date = p.get('date', ''), url = p.get('url', ''), title = p.get('title', ''), excerpt  = p.get('excerpt', '')), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
     ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', '') )) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
     ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(ctx.get('page', {}).get('author', [])) - 1 else True)) for i, a in enumerate( ctx.get('page', {}).get('author', []) )) if ctx.get('page', {}).get('author', []) else None
     
@@ -2283,14 +2283,14 @@ def build_context(
         excerpt       = page['frontmatter'].pop('excerpt', '') or page['content'].strip().split('\n')[0],
         url           = page['frontmatter'].pop('url', '') or page['frontmatter'].get('permalink', '') or page['output_path'],
         
-        id = page['frontmatter'].pop('id', '') or page['path'],
+        id            = page['frontmatter'].pop('id', '') or page['path'],
 
-        twitter = dict(card = page['frontmatter'].pop('twitter__card', '') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
-        image = dict(path = page['frontmatter'].pop('image', ''), height = '0', width = '0', alt = ''),
+        twitter       = dict(card = page['frontmatter'].pop('twitter__card', '') or ctx['site'].get('twitter__card') or 'card'),#'summary_large_image'),
+        image         = dict(path = page['frontmatter'].pop('image', ''), height = '0', width = '0', alt = ''),
 
-        previous = None,
-        next = None,
-        type = 'page'
+        previous      = None,
+        next          = None,
+        type          = 'page'
     )
     page['frontmatter'].pop('permalink', '')
     ctx['page'].update(page['frontmatter'])
@@ -2306,8 +2306,6 @@ def build_context(
         'summary' : ctx['page']['excerpt'],
     })
     
-    # TODO: optionally use pages/posts from cfg
-    
     ctx['site']['pages'] = cfg.pop('pages', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
     ctx['site']['posts'] = cfg.pop('posts', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
@@ -2320,8 +2318,8 @@ def build_context(
         next_page          = paginator_next_page if paginator_next_page is not None and paginator_next_page >= 0 else page['frontmatter'].get('paginator__next_page'),
     )
 
-    snippet = lambda s, maxlen = 500: s[:500] + '...'
-    format_string = lambda s: s # :markdownify, :strip_html, :normalize_whitespace, :escape_once,
+    snippet = lambda s, maxlen = 500: s[:maxlen] + '...'
+    format_string = lambda s: html.escape(s)
 
     ctx['seo_tag'] = dict(
         canonical_url = ctx['page'].get('canonical_url', '') or absolute_url(ctx['page'].get('url', ''), ctx).replace('/index.html', ''),
@@ -2414,5 +2412,13 @@ if __name__ == '__main__':
     
     if args.input_path:
         render(**vars(args), snippets_default = snippets_default)
-    else:
+
+    elif args.sitemap_path and args.output_path:
+        sitemap = sitemap_read(args.sitemap_path)
+        for u in sitemap:
+            if u.get('id') and u.get('href'):
+                render(**dict(vars(args), input_path = u['id'], output_path = os.path.join(args.output_path, u['href'])), snippets_default = snippets_default)
+        print(sitemap_write(os.path.join(args.output_path, 'sitemap.xml'), sitemap))
+
+    elif args.snippets_dir and not args.output_path:
         snippets_write(args.snippets_dir, snippets_default)
