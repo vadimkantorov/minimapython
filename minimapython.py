@@ -2022,8 +2022,8 @@ def render_page(page, ctx, num_snippets_renders = 5):
 
     ctx = ctx.copy() | snippets
     
-    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post = dict(date = p.get('date', ''), url = p.get('url', ''), title = p.get('title', ''), excerpt  = p.get('excerpt', '')), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
-    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page__url = p.get('url', ''), page__title = p.get('title', '') )) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
+    ctx['post_list_html'] = '\n'.join( resolve_template_variables(snippets['post_list_html'], dict(post = dict(date = p.get('date', ''), url = p.get('url', ''), title = p.get('title') or os.path.basename(p.get('url', '')), excerpt  = p.get('excerpt', '')), **(dict(site__show_excerpts = True) if bool(ctx.get('site', {}).get('show_excerpts')) else {}))) for p in (ctx.get('paginator', {}).get('posts', []) if ctx.get('site', {}).get('paginate') else ctx.get('site', {}).get('posts', [])) )
+    ctx['site_header_pages_html'] = '\n'.join(resolve_template_variables(snippets['site_header_pages_html'], dict(page = dict(url = p.get('url', ''), title = p.get('title') or os.path.basename(p.get('url', '')) ))) for path in ctx.get('site', {}).get('header_pages', []) for p in ctx.get('site', {}).get('pages', []) if p.get('path') == path)
     ctx['page_author_html'] = '\n'.join(resolve_template_variables(snippets['page_author_html'], dict(author = a, forloop__last = None if i < len(ctx.get('page', {}).get('author', [])) - 1 else True)) for i, a in enumerate( ctx.get('page', {}).get('author', []) )) if ctx.get('page', {}).get('author', []) else None
     
     res = resolve_template_variables(ctx['base_html'], dict(content_base = snippets.get(page['layout'] + '_html', '')))
@@ -2114,22 +2114,22 @@ def sitemap_update(sitemap, kwargs, translate = {ord('-') : '', ord('_') : ''}):
     k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id') and kwargs.get('id')) and u['id'].translate(translate) == kwargs['id'].translate(translate)) or (bool(u.get('loc') and kwargs.get('loc')) and u['loc'] == kwargs['loc']) ] or [-1])[0]
     if k == -1:
         sitemap.append({})
-    sitemap[k] = sitemap[k] | kwargs
+    sitemap[k] = sitemap[k] | { k : v for k, v in kwargs.items() if v } 
     return sitemap
 
 def absolute_url(v, ctx):
     site_url = ctx.get('site', {}).get('url', '')
     base_url = ctx.get('site', {}).get('baseurl', '')
     if site_url:
-        return os.path.join(site_url, base_url.strip('/'), v)
+        return os.path.join(site_url, base_url.lstrip('/'), v.lstrip('/'))
     if base_url:
-        return os.path.join('/' + base_url.strip('/'), v)
+        return os.path.join('/' + base_url.lstrip('/'), v.lstrip('/'))
     return v
 
 def relative_url(v, ctx):
     base_url = ctx.get('site', {}).get('baseurl', '')
     if base_url:
-        return os.path.join('/' + base_url.strip('/'), v)
+        return os.path.join('/' + base_url.lstrip('/'), v.lstrip('/'))
     return v
 
 def date_to_xmlschema(v, ctx, strftime = '', strptime = ''):
@@ -2226,7 +2226,7 @@ def build_context(
     ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
     ctx['root'] = '/'
     
-    cfg_url, cfg_baseurl = cfg.pop('url', ''), cfg.pop('baseurl', '')
+    cfg_url, cfg_baseurl, cfg_pages, cfg_posts = cfg.pop('url', ''), cfg.pop('baseurl', ''), cfg.pop('pages', []), cfg.pop('posts', [])
     
     #TODO: detect date and title from filename/h1
     ctx['site'] = dict(
@@ -2306,8 +2306,8 @@ def build_context(
         'summary' : ctx['page']['excerpt'],
     })
     
-    ctx['site']['pages'] = cfg.pop('pages', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
-    ctx['site']['posts'] = cfg.pop('posts', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
+    ctx['site']['pages'] = cfg_pages or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
+    ctx['site']['posts'] = cfg_posts or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
     ctx['paginator'] = dict(
@@ -2352,7 +2352,8 @@ def render(
     output_path, 
     input_path = '', 
     site_config_path = '', 
-    sitemap_path = '', 
+    sitemap_path = '',
+    sitemap_dry = False,
     snippets_dir = '', 
     layout = '', 
     baseurl = '', 
@@ -2375,8 +2376,8 @@ def render(
     ctx = build_context(site_config_path, sitemap_path, snippets_dir, baseurl, siteurl, page, snippets_default, paginator_previous_page_path = paginator_previous_page_path, paginator_next_page_path = paginator_next_page_path, paginator_page = paginator_page, paginator_next_page = paginator_next_page, paginator_previous_page = paginator_previous_page)
     rendered = render_page(page, ctx = ctx)
    
-    if sitemap_path:
-        print(sitemap_write(sitemap_path + '._.xml', ctx['sitemap']))
+    if sitemap_path and not sitemap_dry:
+        print(sitemap_write(sitemap_path, ctx['sitemap']))
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok = True)
     with open(output_path, 'w') as fp:
@@ -2397,6 +2398,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-path', '-o')
     parser.add_argument('--site-config-path', '-c')
     parser.add_argument('--sitemap-path')
+    parser.add_argument('--sitemap-dry', action = 'store_true')
     parser.add_argument('--force-plain', action = 'store_true')
     parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
     parser.add_argument('--snippets-dir')
@@ -2415,10 +2417,12 @@ if __name__ == '__main__':
 
     elif args.sitemap_path and args.output_path:
         sitemap = sitemap_read(args.sitemap_path)
+        sitemap_path = os.path.join(args.output_path, 'sitemap.xml')
+        if not args.sitemap_dry:
+            print(sitemap_write(sitemap_path, sitemap))
         for u in sitemap:
             if u.get('id') and u.get('href'):
-                render(**dict(vars(args), input_path = u['id'], output_path = os.path.join(args.output_path, u['href'])), snippets_default = snippets_default)
-        print(sitemap_write(os.path.join(args.output_path, 'sitemap.xml'), sitemap))
+                render(**dict(vars(args), sitemap_path = sitemap_path if not args.sitemap_dry else args.sitemap_path, input_path = u['id'], output_path = os.path.join(args.output_path, u['href'])), snippets_default = snippets_default)
 
     elif args.snippets_dir and not args.output_path:
         snippets_write(args.snippets_dir, snippets_default)
