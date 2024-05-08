@@ -2089,7 +2089,8 @@ def sitemap_read(path):
         return []
     node_doc = xml.dom.minidom.parseString(xmlstr)
     assert node_doc.documentElement.nodeName == 'urlset'
-    return [{'id': node_url.getAttribute('id'), 'class': node_url.getAttribute('class'), 'href': node_url.getAttribute('href'), 'loc' : ''.join(nn.nodeValue for n in node_url.getElementsByTagName('loc') if n.nodeType == n.ELEMENT_NODE for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE), 'title' : ''.join(nn.nodeValue for n in node_url.getElementsByTagName('title') if n.nodeType == n.ELEMENT_NODE for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE)} for node_url in node_doc.documentElement.getElementsByTagName('url')]
+    read_elem_contents = lambda node_url, tag: ''.join(nn.nodeValue for n in node_url.getElementsByTagName(tag) if n.nodeType == n.ELEMENT_NODE for nn in n.childNodes if nn.nodeType == nn.TEXT_NODE)
+    return [{'id': node_url.getAttribute('id'), 'class': node_url.getAttribute('class'), 'href': node_url.getAttribute('href'), 'loc' : read_elem_contents(node_url, 'loc'), 'title' : read_elem_contents(node_url, 'title'), 'lastmod' : read_elem_contents(node_url, 'lastmod'), 'summary' : read_elem_contents(node_url, 'summary') } for node_url in node_doc.documentElement.getElementsByTagName('url')]
     
 def sitemap_write(path, sitemap):
     # https://sitemaps.org/protocol.html
@@ -2225,6 +2226,8 @@ def build_context(
     ctx['snippets'] = snippets_default | snippets_read(snippets_dir)
     ctx['root'] = '/'
     
+    cfg_url, cfg_baseurl = cfg.pop('url', ''), cfg.pop('baseurl', '')
+    
     #TODO: detect date and title from filename/h1
     ctx['site'] = dict(
         time = now,
@@ -2240,10 +2243,10 @@ def build_context(
 
         minima = cfg.pop('minima', {}),
 
-        url = siteurl or cfg.get('url', '/'),
-        baseurl = baseurl or cfg.get('baseurl', '/'),
+        url = siteurl or cfg_url or '/',
+        baseurl = baseurl or cfg_baseurl or '/',
         
-        author = dict(name = '', email = '') | dict(cfg.pop('author', {})),
+        author = dict(name = '', email = '', uri = '') | dict(cfg.pop('author', {})),
         
         related_posts = [],
         static_files = [],
@@ -2255,8 +2258,6 @@ def build_context(
         categories = {},
         tags = {},
     )
-    cfg.pop('url', '')
-    cfg.pop('baseurl', '')
     ctx['site'].update(cfg)
     
     ctx['page'] = dict(
@@ -2302,13 +2303,13 @@ def build_context(
         'class': ctx['page']['layout'],
         'loc': absolute_url(page['output_path'], ctx),
         'lastmod' : ctx['page']['date'],
+        'summary' : ctx['page']['excerpt'],
     })
     
     # TODO: optionally use pages/posts from cfg
     
-    ctx['site']['pages'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
-    ctx['site']['posts'] = [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
-    
+    ctx['site']['pages'] = cfg.pop('pages', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') != "post"]
+    ctx['site']['posts'] = cfg.pop('posts', []) or [dict(path = p.get('id', ''), title = p.get('title', ''), url = p.get('href', ''), date = p.get('lastmod', ''), excerpt = p.get('summary', '')) for p in ctx['sitemap'] if p.get('class') == "post"]
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
     ctx['paginator'] = dict(
