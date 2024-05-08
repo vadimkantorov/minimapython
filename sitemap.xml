@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <urlset>
-  <url class="home" id="index.md" href="_site/index.html">
-    <loc>/minimapython/_site/index.html</loc>
+  <url id="index.md" href="_site/index.html" class="home">
+    <loc>https://vadimkantorov.github.io/minimapython/_site/index.html</loc>
     <title>index</title>
-    <lastmod>2024-05-08 20:53:49</lastmod>
+    <lastmod>2024-05-08 23:43:35</lastmod>
   </url>
-  <url class="page" id="about.md" href="about.html">
+  <url id="about.md" href="about.html" class="page">
     <title>about</title>
   </url>
-  <url class="post" id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html">
+  <url id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html" class="post">
     <title>super-short-article</title>
     <lastmod>2016-05-19</lastmod>
   </url>
-  <url class="post" id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html">
+  <url id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html" class="post">
     <title>my-example-post</title>
     <lastmod>2016-05-20</lastmod>
   </url>
-  <url class="post" id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html">
+  <url id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html" class="post">
     <title>super-long-article</title>
     <lastmod>2016-05-20</lastmod>
   </url>
-  <url class="post" id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html">
+  <url id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html" class="post">
     <title>this-post-demonstrates-post-content-styles</title>
     <lastmod>2016-05-20</lastmod>
   </url>
-  <url class="post" id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html">
+  <url id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html" class="post">
     <title>welcome-to-jekyll</title>
     <lastmod>2016-05-20</lastmod>
   </url>
