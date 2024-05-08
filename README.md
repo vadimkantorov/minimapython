@@ -1,4 +1,4 @@
-Contents of [`_posts`](./_posts), `index.md`, `about.md`, `_config.json` taken from the demo of [jekyll/minima@demo-site](https://github.com/jekyll/minima/tree/demo-site).
+Contents of [`_posts`](./_posts), [`index.md`](./index.md), [`about.md`](./about.md), [`_config.json`](./_config.json) taken from the demo of [jekyll/minima@demo-site](https://github.com/jekyll/minima/tree/demo-site).
 
 ### Generate full site from `sitemap.xml`
 
