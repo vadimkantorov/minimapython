@@ -21,4 +21,3 @@ python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016
 python minimapython.py -c _config.json --sitemap-path sitemap.xml -i _posts/2016-05-20-welcome-to-jekyll.md   -o _site/blog/2016-05-20-welcome-to-jekyll.html
 cp sitemap.xml ./_site
 ```
-
