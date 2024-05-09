@@ -41,7 +41,7 @@ jobs:
           curl -O https://raw.githubusercontent.com/vadimkantorov/minimapython/master/minimapython.py
 
       - name: Build with minimapython
-        run: python minimapython.py -c _config.json --sitemap-path sitemap.xml -o ./_site --baseurl "${{ steps.pages.outputs.base_path }}" --siteurl "https://${{ github.repository_owner }}.github.io"
+        run: python minimapython.py -c _config.json --sitemap-path sitemap.xml -o _site --baseurl "${{ steps.pages.outputs.base_path }}" --siteurl "https://${{ github.repository_owner }}.github.io"
         
       - name: Upload artifact
         # Automatically uploads an artifact from the './_site' directory by default
