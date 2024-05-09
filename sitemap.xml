@@ -6,24 +6,20 @@
   <url id="about.md" href="about.html" class="page">
     <title>about</title>
   </url>
+
   <url id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html" class="post">
-    <title>welcome-to-jekyll</title>
     <lastmod>2016-05-20</lastmod>
   </url>
   <url id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html" class="post">
-    <title>this-post-demonstrates-post-content-styles</title>
     <lastmod>2016-05-20</lastmod>
   </url>
   <url id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html" class="post">
-    <title>super-long-article</title>
     <lastmod>2016-05-20</lastmod>
   </url>
   <url id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html" class="post">
-    <title>my-example-post</title>
     <lastmod>2016-05-20</lastmod>
   </url>
   <url id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html" class="post">
-    <title>super-short-article</title>
     <lastmod>2016-05-19</lastmod>
   </url>
 </urlset>
