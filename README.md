@@ -5,7 +5,7 @@ Contents of [`_posts`](./_posts), [`index.md`](./index.md), [`about.md`](./about
 ### Generate full site from `sitemap.xml`
 
 ```shell
-python minimapython.py -c _config.json --sitemap-path sitemap.xml -o ./_site --baseurl "${{ steps.pages.outputs.base_path }}"
+python minimapython.py -c _config.json --sitemap-path sitemap.xml -o _site --baseurl /minimapython --siteurl https://vadimkantorov.github.io
 ```
 
 ### Generate full site page-by-page
