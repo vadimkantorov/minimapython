@@ -2110,7 +2110,6 @@ def sitemap_write(path, sitemap):
     return path
 
 def sitemap_update(sitemap, kwargs, translate = {ord('-') : '', ord('_') : ''}):
-    # TODO: sort by date desc
     sitemap = sitemap[:]
     k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id') and kwargs.get('id')) and u['id'].translate(translate) == kwargs['id'].translate(translate)) or (bool(u.get('loc') and kwargs.get('loc')) and u['loc'] == kwargs['loc']) ] or [-1])[0]
     if k == -1:
@@ -2206,6 +2205,7 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
     content_lines = content.strip().splitlines()
     title_from_content = content_lines[0].removeprefix('### ').removeprefix('## ').removeprefix('# ').strip() if content_lines and (content_lines[0].startswith('### ') or content_lines[0].startswith('## ') or content_lines[0].startswith('# ')) else ''
     title_from_id = os.path.splitext(os.path.basename(input_path))[0].removeprefix(get_page_date(input_path)).strip('-').strip('_').replace('-', ' ').replace('_', ' ').title()
+    title_from_frontmatter = frontmatter.get('title', '') or title_from_content
 
     render_markdown = lambda content, ctx: markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
     render_plain = lambda content, ctx: content
@@ -2214,7 +2214,7 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
     title = frontmatter.pop('title', '') or (title_from_content if is_markdown else '') or title_from_id
     date = frontmatter.pop('date', '') or get_page_date(input_path)
     slug = os.path.splitext(os.path.basename(frontmatter.get('output_path', '')))[0] or os.path.splitext(os.path.basename(input_path))[0] or '' 
-    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = slug, title = title, date = date) | extra
+    return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = slug, title = title, date = date, title_from_frontmatter = title_from_frontmatter) | extra
 
 def build_context(
     site_config_path, 
@@ -2249,7 +2249,6 @@ def build_context(
     
     cfg_url, cfg_baseurl, cfg_pages, cfg_posts = cfg.pop('url', ''), cfg.pop('baseurl', ''), cfg.pop('pages', []), cfg.pop('posts', [])
     
-    #TODO: detect date and title from filename/h1
     ctx['site'] = dict(
         time = now,
         title = cfg.pop('title', ''),
@@ -2284,7 +2283,7 @@ def build_context(
     ctx['page'] = dict(
         layout        = page['frontmatter'].pop('layout', 'default'),
         lang          = page['frontmatter'].pop('lang', ctx['site'].get('lang', '')), 
-        title         = page['title'],
+        title         = page['title_from_frontmatter'],
         list_title    = page['frontmatter'].pop('list_title', ctx['site'].get('list_title', '')),
         description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
@@ -2315,12 +2314,21 @@ def build_context(
         type          = 'page'
     )
     page['frontmatter'].pop('permalink', '')
+    
+    frontmatterpaginator__previous_page_path, frontmatterpaginator__next_page_path, frontmatterpaginator__page, frontmatterpaginator__previous_page, frontmatterpaginator__next_page = page['frontmatter'].pop('paginator__previous_page_path', ''), page['frontmatter'].pop('paginator__next_page_path', ''), page['frontmatter'].pop('paginator__page', 0), page['frontmatter'].pop('paginator__previous_page', 0), page['frontmatter'].pop('paginator__next_page', 0)
+    ctx['paginator'] = dict(
+        previous_page_path = paginator_previous_page_path or frontmatterpaginator__previous_page_path,
+        next_page_path     = paginator_next_page_path or frontmatterpaginator__next_page_path,
+        page               = paginator_page if paginator_page is not None and paginator_page >= 0 else int(frontmatterpaginator__page),
+        previous_page               = paginator_previous_page if paginator_previous_page is not None and paginator_previous_page >= 0 else int(frontmatterpaginator__previous_page),
+        next_page               = paginator_next_page if paginator_next_page is not None and paginator_next_page >= 0 else int(frontmatterpaginator__next_page),
+    )
     ctx['page'].update(page['frontmatter'])
         
     ctx['sitemap'] = sitemap_read(sitemap_path)
     ctx['sitemap'] = sitemap_update(ctx['sitemap'], {
         'id': ctx['page']['path'], 
-        'title': ctx['page']['title'],
+        'title': page['title'],
         'href': ctx['page']['url'],
         'class': ctx['page']['layout'],
         'loc': absolute_url(ctx['page']['url'], ctx),
@@ -2328,20 +2336,11 @@ def build_context(
         'summary' : ctx['page']['excerpt'],
     })
     sorted_key_pages_and_posts = lambda p: (p['date'], p['title'])
-    pages_and_posts = reversed(sorted([dict(path = p.get('id', ''), title = p.get('title', '') or read_page(p.get('id', ''))['title'], url = p.get('href', ''), date = p.get('lastmod', get_page_date(p.get('id', ''))), excerpt = p.get('summary', ''), layout = p.get('class', '')) for p in ctx['sitemap']], key = sorted_key_pages_and_posts))
-    
+    pages_and_posts = list(reversed(sorted([dict(path = p.get('id', ''), title = p.get('title', '') or read_page(p.get('id', ''))['title'], url = p.get('href', ''), date = p.get('lastmod') or get_page_date(p.get('id', '')), excerpt = p.get('summary', ''), layout = p.get('class', '')) for p in ctx['sitemap']], key = sorted_key_pages_and_posts)))
+   
     ctx['site']['pages'] = cfg_pages or [p for p in pages_and_posts if p['layout'] != 'post']
     ctx['site']['posts'] = cfg_posts or [p for p in pages_and_posts if p['layout'] == 'post']
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
-
-    #TODO: pop from frontmatter before update
-    ctx['paginator'] = dict(
-        previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
-        next_page_path     = paginator_next_page_path or page['frontmatter'].get('paginator__next_page_path') or '',
-        page               = paginator_page if paginator_page is not None and paginator_page >= 0 else int(page['frontmatter'].get('paginator__page', 0)),
-        previous_page      = paginator_previous_page if paginator_previous_page is not None and paginator_previous_page >= 0 else page['frontmatter'].get('paginator__previous_page'),
-        next_page          = paginator_next_page if paginator_next_page is not None and paginator_next_page >= 0 else page['frontmatter'].get('paginator__next_page'),
-    )
 
     snippet = lambda s, maxlen = 500: s[:maxlen] + '...'
     format_string = lambda s: html.escape(s)
