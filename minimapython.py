@@ -2110,11 +2110,12 @@ def sitemap_write(path, sitemap):
     return path
 
 def sitemap_update(sitemap, kwargs, translate = {ord('-') : '', ord('_') : ''}):
+    # TODO: sort by date desc
     sitemap = sitemap[:]
     k = ([i for i, u in enumerate(sitemap) if (bool(u.get('id') and kwargs.get('id')) and u['id'].translate(translate) == kwargs['id'].translate(translate)) or (bool(u.get('loc') and kwargs.get('loc')) and u['loc'] == kwargs['loc']) ] or [-1])[0]
     if k == -1:
         sitemap.append({})
-    sitemap[k] = sitemap[k] | { k : v for k, v in kwargs.items() if v } 
+    sitemap[k] = sitemap[k] | { k : v for k, v in kwargs.items() if v }
     return sitemap
 
 def absolute_url(v, ctx):
@@ -2179,15 +2180,6 @@ def get_page_date(page_path, date_template = '0000-00-00'):
         return page_name[:len(date_template)]
     return ''
 
-def get_page_title(page_path = '', content = None):
-    if content is None:
-        content = open(page_path).read()
-
-    lines = content.strip().splitlines()
-    if lines:
-        return lines[0].removeprefix('### ').removeprefix('## ').removeprefix('# ').strip()
-    return ''
-
 def read_page(input_path, layout = '', force_plain = False, front_matter_header = '---', extra = {}):
     content = ''
     if input_path and os.path.exists(input_path):
@@ -2207,16 +2199,19 @@ def read_page(input_path, layout = '', force_plain = False, front_matter_header 
             frontmatter = {}
         
         layout = frontmatter.get('layout') or layout
-
     is_markdown = input_path.endswith('.md')
     if is_markdown and force_plain is False:
         assert markdown is not None, 'ERROR: [markdown] python package must be installed or [--force-plain] must be used'
 
+    content_lines = content.strip().splitlines()
+    title_from_content = content_lines[0].removeprefix('### ').removeprefix('## ').removeprefix('# ').strip() if content_lines and (content_lines[0].startswith('### ') or content_lines[0].startswith('## ') or content_lines[0].startswith('# ')) else ''
+    title_from_id = os.path.splitext(os.path.basename(input_path))[0].removeprefix(get_page_date(input_path)).strip('-').strip('_').replace('-', ' ').replace('_', ' ').title()
+
     render_markdown = lambda content, ctx: markdown.markdown(content, extensions = markdown_extensions, extension_configs = markdown_extension_configs)
     render_plain = lambda content, ctx: content
-        
+    
     renderer = render_markdown if (is_markdown and force_plain is False) else render_plain
-    title = frontmatter.pop('title', '') or get_page_title(content = content)
+    title = frontmatter.pop('title', '') or (title_from_content if is_markdown else '') or title_from_id
     date = frontmatter.pop('date', '') or get_page_date(input_path)
     slug = os.path.splitext(os.path.basename(frontmatter.get('output_path', '')))[0] or os.path.splitext(os.path.basename(input_path))[0] or '' 
     return dict(frontmatter = frontmatter, layout = layout, content = content, renderer = renderer, path = input_path, name = os.path.basename(input_path), slug = slug, title = title, date = date) | extra
@@ -2332,8 +2327,9 @@ def build_context(
         'lastmod' : ctx['page']['date'],
         'summary' : ctx['page']['excerpt'],
     })
+    sorted_key_pages_and_posts = lambda p: (p['date'], p['title'])
+    pages_and_posts = reversed(sorted([dict(path = p.get('id', ''), title = p.get('title', '') or read_page(p.get('id', ''))['title'], url = p.get('href', ''), date = p.get('lastmod', get_page_date(p.get('id', ''))), excerpt = p.get('summary', ''), layout = p.get('class', '')) for p in ctx['sitemap']], key = sorted_key_pages_and_posts))
     
-    pages_and_posts = [dict(path = p.get('id', ''), title = p.get('title', '') or get_page_title(p.get('id', '')), url = p.get('href', ''), date = p.get('lastmod', get_page_date(p.get('id', ''))), excerpt = p.get('summary', ''), layout = p.get('class', '')) for p in ctx['sitemap']]
     ctx['site']['pages'] = cfg_pages or [p for p in pages_and_posts if p['layout'] != 'post']
     ctx['site']['posts'] = cfg_posts or [p for p in pages_and_posts if p['layout'] == 'post']
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
