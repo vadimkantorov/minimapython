@@ -2167,6 +2167,7 @@ def yaml_loads(content):
     return res
 
 def strip_output_path_prefix(output_path):
+    output_path = output_path.removeprefix('./')
     splitted = output_path.split(os.path.sep)
     if len(splitted) > 1:
         return os.path.sep.join(splitted[1:])
@@ -2327,7 +2328,7 @@ def build_context(
         'title': ctx['page']['title'],
         'href': ctx['page']['url'],
         'class': ctx['page']['layout'],
-        'loc': absolute_url(page['output_path'], ctx),
+        'loc': absolute_url(ctx['page']['url'], ctx),
         'lastmod' : ctx['page']['date'],
         'summary' : ctx['page']['excerpt'],
     })
