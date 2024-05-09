@@ -2149,6 +2149,7 @@ def removeATSIGN(v, ctx):
     return v.replace('@', '')
 
 def yaml_loads(content):
+    # https://gist.github.com/vadimkantorov/b26eda3645edb13feaa62b874a3e7f6f
     lines = content.strip().splitlines()
     res = {}
     keyprev = ''
@@ -2164,6 +2165,12 @@ def yaml_loads(content):
         else:
             res[keyprev].append(list_val)
     return res
+
+def strip_output_path_prefix(output_path):
+    splitted = output_path.split(os.path.sep)
+    if len(splitted) > 1:
+        return os.path.sep.join(splitted[1:])
+    return output_path
 
 def get_page_date(page_path, date_template = '0000-00-00'):
     page_name = os.path.basename(page_path)
@@ -2285,7 +2292,7 @@ def build_context(
         list_title    = page['frontmatter'].pop('list_title', ctx['site'].get('list_title', '')),
         description   = page['frontmatter'].pop('description', ''),
         category      = page['frontmatter'].get('category', ''),
-        permalink     = page['frontmatter'].pop('permalink', ''),
+        permalink     = page['frontmatter'].get('permalink', ''),
         draft         = page['frontmatter'].pop('draft', '') == 'true',
         published     = page['frontmatter'].pop('published', '') != 'false',
         content       = page['content'],
@@ -2300,7 +2307,7 @@ def build_context(
         dir           = page['frontmatter'].get('permalink', ctx['site']['baseurl']),
         
         excerpt       = page['frontmatter'].pop('excerpt', '') or page['content'].strip().split('\n')[0],
-        url           = page['frontmatter'].pop('url', '') or page['frontmatter'].get('permalink', '') or page['output_path'],
+        url           = page['frontmatter'].pop('url', '') or page['frontmatter'].get('permalink', '') or strip_output_path_prefix(page['output_path']),
         
         id            = page['frontmatter'].pop('id', '') or page['path'],
 
@@ -2330,6 +2337,7 @@ def build_context(
     ctx['site']['posts'] = cfg_posts or [p for p in pages_and_posts if p['layout'] == 'post']
     ctx['site']['header_pages'] = cfg.pop('header_pages', [p['path'] for p in ctx['site']['pages']])
 
+    #TODO: pop from frontmatter before update
     ctx['paginator'] = dict(
         previous_page_path = paginator_previous_page_path or page['frontmatter'].get('paginator__previous_page_path') or '',
         next_page_path     = paginator_next_page_path or page['frontmatter'].get('paginator__next_page_path') or '',
@@ -2369,7 +2377,8 @@ def build_context(
     
 
 def render(
-    output_path, 
+    output_path,
+    output_path_prefix = '',
     input_path = '', 
     site_config_path = '', 
     sitemap_path = '',
@@ -2416,6 +2425,7 @@ def slugify(s, space = '_', lower = True):
     return s
 
 if __name__ == '__main__':
+    # https://jekyllrb.com/docs/configuration/options/
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-path', '-i')
     parser.add_argument('--output-path', '-o')
@@ -2423,7 +2433,7 @@ if __name__ == '__main__':
     parser.add_argument('--sitemap-path')
     parser.add_argument('--sitemap-dry', action = 'store_true')
     parser.add_argument('--force-plain', action = 'store_true')
-    parser.add_argument('--layout', choices = ['home', 'page', 'post'], default = 'page')
+    parser.add_argument('--layout', default = 'page', help = 'choices = ["home", "page", "post"]')
     parser.add_argument('--snippets-dir')
     parser.add_argument('--baseurl', '-b')
     parser.add_argument('--siteurl')
