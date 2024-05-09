@@ -1,25 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <urlset>
-  <url id="index.md" href="index.html" class="home">
-    <title>index</title>
-  </url>
-  <url id="about.md" href="about.html" class="page">
-    <title>about</title>
-  </url>
-
-  <url id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html" class="post">
-    <lastmod>2016-05-20</lastmod>
-  </url>
-  <url id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html" class="post">
-    <lastmod>2016-05-20</lastmod>
-  </url>
-  <url id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html" class="post">
-    <lastmod>2016-05-20</lastmod>
-  </url>
-  <url id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html" class="post">
-    <lastmod>2016-05-20</lastmod>
-  </url>
-  <url id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html" class="post">
-    <lastmod>2016-05-19</lastmod>
-  </url>
+  <url id="index.md" href="index.html" class="home" />
+  <url id="about.md" href="about.html" class="page" />
+  <url id="_posts/2016-05-20-welcome-to-jekyll.md" href="blog/2016-05-20-welcome-to-jekyll.html" class="post" />
+  <url id="_posts/2016-05-20-this-post-demonstrates-post-content-styles.md" href="blog/2016-05-20-this-post-demonstrates-post-content-styles.html" class="post" />
+  <url id="_posts/2016-05-20-super-long-article.md" href="blog/2016-05-20-super-long-article.html" class="post" />
+  <url id="_posts/2016-05-20-my-example-post.md" href="blog/2016-05-20-my-example-post.html" class="post" />
+  <url id="_posts/2016-05-19-super-short-article.md" href="blog/2016-05-19-super-short-article.html" class="post" />
 </urlset>
